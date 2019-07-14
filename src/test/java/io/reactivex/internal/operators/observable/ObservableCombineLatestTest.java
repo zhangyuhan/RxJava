@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
@@ -483,7 +482,7 @@ public class ObservableCombineLatestTest {
 
             final CountDownLatch cdl = new CountDownLatch(1);
 
-            Observer<List<Object>> s = new DefaultObserver<List<Object>>() {
+            Observer<List<Object>> observer = new DefaultObserver<List<Object>>() {
 
                 @Override
                 public void onNext(List<Object> t) {
@@ -503,7 +502,7 @@ public class ObservableCombineLatestTest {
                 }
             };
 
-            result.subscribe(s);
+            result.subscribe(observer);
 
             cdl.await();
 

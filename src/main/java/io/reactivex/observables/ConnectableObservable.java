@@ -67,6 +67,23 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
     }
 
     /**
+     * Apply a workaround for a race condition with the regular publish().refCount()
+     * so that racing observers and refCount won't hang.
+     * 
+     * @return the ConnectableObservable to work with
+     * @since 2.2.10
+     */
+    @SuppressWarnings("unchecked")
+    private ConnectableObservable<T> onRefCount() {
+        if (this instanceof ObservablePublishClassic) {
+            return RxJavaPlugins.onAssembly(
+                    new ObservablePublishAlt<T>(((ObservablePublishClassic<T>)this).publishSource())
+                   );
+        }
+        return this;
+    }
+
+    /**
      * Returns an {@code Observable} that stays connected to this {@code ConnectableObservable} as long as there
      * is at least one subscription to this {@code ConnectableObservable}.
      * <dl>
@@ -83,7 +100,7 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
     @CheckReturnValue
     @SchedulerSupport(SchedulerSupport.NONE)
     public Observable<T> refCount() {
-        return RxJavaPlugins.onAssembly(new ObservableRefCount<T>(this));
+        return RxJavaPlugins.onAssembly(new ObservableRefCount<T>(onRefCount()));
     }
 
     /**
@@ -93,12 +110,12 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      *  <dt><b>Scheduler:</b></dt>
      *  <dd>This {@code refCount} overload does not operate on any particular {@link Scheduler}.</dd>
      * </dl>
+     * <p>History: 2.1.14 - experimental
      * @param subscriberCount the number of subscribers required to connect to the upstream
      * @return the new Observable instance
-     * @since 2.1.14 - experimental
+     * @since 2.2
      */
     @CheckReturnValue
-    @Experimental
     @SchedulerSupport(SchedulerSupport.NONE)
     public final Observable<T> refCount(int subscriberCount) {
         return refCount(subscriberCount, 0, TimeUnit.NANOSECONDS, Schedulers.trampoline());
@@ -112,14 +129,14 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      *  <dt><b>Scheduler:</b></dt>
      *  <dd>This {@code refCount} overload operates on the {@code computation} {@link Scheduler}.</dd>
      * </dl>
+     * <p>History: 2.1.14 - experimental
      * @param timeout the time to wait before disconnecting after all subscribers unsubscribed
      * @param unit the time unit of the timeout
      * @return the new Observable instance
-     * @since 2.1.14 - experimental
      * @see #refCount(long, TimeUnit, Scheduler)
+     * @since 2.2
      */
     @CheckReturnValue
-    @Experimental
     @SchedulerSupport(SchedulerSupport.COMPUTATION)
     public final Observable<T> refCount(long timeout, TimeUnit unit) {
         return refCount(1, timeout, unit, Schedulers.computation());
@@ -133,14 +150,14 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      *  <dt><b>Scheduler:</b></dt>
      *  <dd>This {@code refCount} overload operates on the specified {@link Scheduler}.</dd>
      * </dl>
+     * <p>History: 2.1.14 - experimental
      * @param timeout the time to wait before disconnecting after all subscribers unsubscribed
      * @param unit the time unit of the timeout
      * @param scheduler the target scheduler to wait on before disconnecting
      * @return the new Observable instance
-     * @since 2.1.14 - experimental
+     * @since 2.2
      */
     @CheckReturnValue
-    @Experimental
     @SchedulerSupport(SchedulerSupport.CUSTOM)
     public final Observable<T> refCount(long timeout, TimeUnit unit, Scheduler scheduler) {
         return refCount(1, timeout, unit, scheduler);
@@ -154,15 +171,15 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      *  <dt><b>Scheduler:</b></dt>
      *  <dd>This {@code refCount} overload operates on the {@code computation} {@link Scheduler}.</dd>
      * </dl>
+     * <p>History: 2.1.14 - experimental
      * @param subscriberCount the number of subscribers required to connect to the upstream
      * @param timeout the time to wait before disconnecting after all subscribers unsubscribed
      * @param unit the time unit of the timeout
      * @return the new Observable instance
-     * @since 2.1.14 - experimental
      * @see #refCount(int, long, TimeUnit, Scheduler)
+     * @since 2.2
      */
     @CheckReturnValue
-    @Experimental
     @SchedulerSupport(SchedulerSupport.COMPUTATION)
     public final Observable<T> refCount(int subscriberCount, long timeout, TimeUnit unit) {
         return refCount(subscriberCount, timeout, unit, Schedulers.computation());
@@ -176,21 +193,21 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      *  <dt><b>Scheduler:</b></dt>
      *  <dd>This {@code refCount} overload operates on the specified {@link Scheduler}.</dd>
      * </dl>
+     * <p>History: 2.1.14 - experimental
      * @param subscriberCount the number of subscribers required to connect to the upstream
      * @param timeout the time to wait before disconnecting after all subscribers unsubscribed
      * @param unit the time unit of the timeout
      * @param scheduler the target scheduler to wait on before disconnecting
      * @return the new Observable instance
-     * @since 2.1.14 - experimental
+     * @since 2.2
      */
     @CheckReturnValue
-    @Experimental
     @SchedulerSupport(SchedulerSupport.CUSTOM)
     public final Observable<T> refCount(int subscriberCount, long timeout, TimeUnit unit, Scheduler scheduler) {
         ObjectHelper.verifyPositive(subscriberCount, "subscriberCount");
         ObjectHelper.requireNonNull(unit, "unit is null");
         ObjectHelper.requireNonNull(scheduler, "scheduler is null");
-        return RxJavaPlugins.onAssembly(new ObservableRefCount<T>(this, subscriberCount, timeout, unit, scheduler));
+        return RxJavaPlugins.onAssembly(new ObservableRefCount<T>(onRefCount(), subscriberCount, timeout, unit, scheduler));
     }
 
     /**
@@ -203,7 +220,7 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      * during the lifetime of the returned Observable. If this ConnectableObservable
      * terminates, the connection is never renewed, no matter how Observers come
      * and go. Use {@link #refCount()} to renew a connection or dispose an active
-     * connection when all {@code Observers}s have disposed their {@code Disposable}s.
+     * connection when all {@code Observer}s have disposed their {@code Disposable}s.
      * <p>
      * This overload does not allow disconnecting the connection established via
      * {@link #connect(Consumer)}. Use the {@link #autoConnect(int, Consumer)} overload
@@ -227,7 +244,7 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      * during the lifetime of the returned Observable. If this ConnectableObservable
      * terminates, the connection is never renewed, no matter how Observers come
      * and go. Use {@link #refCount()} to renew a connection or dispose an active
-     * connection when all {@code Observers}s have disposed their {@code Disposable}s.
+     * connection when all {@code Observer}s have disposed their {@code Disposable}s.
      * <p>
      * This overload does not allow disconnecting the connection established via
      * {@link #connect(Consumer)}. Use the {@link #autoConnect(int, Consumer)} overload
@@ -255,7 +272,7 @@ public abstract class ConnectableObservable<T> extends Observable<T> {
      * during the lifetime of the returned Observable. If this ConnectableObservable
      * terminates, the connection is never renewed, no matter how Observers come
      * and go. Use {@link #refCount()} to renew a connection or dispose an active
-     * connection when all {@code Observers}s have disposed their {@code Disposable}s.
+     * connection when all {@code Observer}s have disposed their {@code Disposable}s.
      *
      * @param numberOfSubscribers the number of subscribers to await before calling connect
      *                            on the ConnectableObservable. A non-positive value indicates

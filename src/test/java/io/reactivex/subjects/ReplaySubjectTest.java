@@ -14,20 +14,20 @@
 package io.reactivex.subjects;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.lang.management.*;
 import java.util.Arrays;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.*;
 
-import org.junit.Test;
+import org.junit.*;
 import org.mockito.*;
 
 import io.reactivex.*;
 import io.reactivex.disposables.*;
 import io.reactivex.exceptions.TestException;
-import io.reactivex.functions.Function;
+import io.reactivex.functions.*;
 import io.reactivex.observers.*;
 import io.reactivex.schedulers.*;
 import io.reactivex.subjects.ReplaySubject.*;
@@ -348,18 +348,20 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertEquals("three", lastValueForSubscriber2.get());
 
     }
+
     @Test
     public void testSubscriptionLeak() {
         ReplaySubject<Object> subject = ReplaySubject.create();
 
-        Disposable s = subject.subscribe();
+        Disposable d = subject.subscribe();
 
         assertEquals(1, subject.observerCount());
 
-        s.dispose();
+        d.dispose();
 
         assertEquals(0, subject.observerCount());
     }
+
     @Test(timeout = 1000)
     public void testUnsubscriptionCase() {
         ReplaySubject<String> src = ReplaySubject.create();
@@ -401,6 +403,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
             verify(o, never()).onError(any(Throwable.class));
         }
     }
+
     @Test
     public void testTerminateOnce() {
         ReplaySubject<Integer> source = ReplaySubject.create();
@@ -453,6 +456,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
             verify(o, never()).onError(any(Throwable.class));
         }
     }
+
     @Test
     public void testReplay1Directly() {
         ReplaySubject<Integer> source = ReplaySubject.createWithSize(1);
@@ -616,6 +620,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertTrue(as.hasComplete());
         assertNull(as.getThrowable());
     }
+
     @Test
     public void testCurrentStateMethodsError() {
         ReplaySubject<Object> as = ReplaySubject.create();
@@ -630,6 +635,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertFalse(as.hasComplete());
         assertTrue(as.getThrowable() instanceof TestException);
     }
+
     @Test
     public void testSizeAndHasAnyValueUnbounded() {
         ReplaySubject<Object> rs = ReplaySubject.create();
@@ -652,6 +658,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertEquals(2, rs.size());
         assertTrue(rs.hasValue());
     }
+
     @Test
     public void testSizeAndHasAnyValueEffectivelyUnbounded() {
         ReplaySubject<Object> rs = ReplaySubject.createUnbounded();
@@ -697,6 +704,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertEquals(2, rs.size());
         assertTrue(rs.hasValue());
     }
+
     @Test
     public void testSizeAndHasAnyValueEffectivelyUnboundedError() {
         ReplaySubject<Object> rs = ReplaySubject.createUnbounded();
@@ -729,6 +737,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertEquals(0, rs.size());
         assertFalse(rs.hasValue());
     }
+
     @Test
     public void testSizeAndHasAnyValueEffectivelyUnboundedEmptyError() {
         ReplaySubject<Object> rs = ReplaySubject.createUnbounded();
@@ -748,6 +757,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertEquals(0, rs.size());
         assertFalse(rs.hasValue());
     }
+
     @Test
     public void testSizeAndHasAnyValueEffectivelyUnboundedEmptyCompleted() {
         ReplaySubject<Object> rs = ReplaySubject.createUnbounded();
@@ -800,6 +810,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertEquals(0, rs.size());
         assertFalse(rs.hasValue());
     }
+
     @Test
     public void testGetValues() {
         ReplaySubject<Object> rs = ReplaySubject.create();
@@ -814,6 +825,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertArrayEquals(expected, rs.getValues());
 
     }
+
     @Test
     public void testGetValuesUnbounded() {
         ReplaySubject<Object> rs = ReplaySubject.createUnbounded();
@@ -952,7 +964,7 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
 
         scheduler.advanceTimeBy(2, TimeUnit.DAYS);
 
-        assertEquals(null, rp.getValue());
+        assertNull(rp.getValue());
         assertEquals(0, rp.getValues().length);
         assertNull(rp.getValues(new Integer[2])[0]);
     }
@@ -1205,7 +1217,6 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         assertSame(o, buf.head);
     }
 
-
     @Test
     public void noHeadRetentionSize() {
         ReplaySubject<Integer> source = ReplaySubject.createWithSize(1);
@@ -1272,5 +1283,63 @@ public class ReplaySubjectTest extends SubjectTest<Integer> {
         source.cleanupBuffer();
 
         assertSame(o, buf.head);
+    }
+
+    @Test
+    public void noBoundedRetentionViaThreadLocal() throws Exception {
+        final ReplaySubject<byte[]> rs = ReplaySubject.createWithSize(1);
+
+        Observable<byte[]> source = rs.take(1)
+        .concatMap(new Function<byte[], Observable<byte[]>>() {
+            @Override
+            public Observable<byte[]> apply(byte[] v) throws Exception {
+                return rs;
+            }
+        })
+        .takeLast(1)
+        ;
+
+        System.out.println("Bounded Replay Leak check: Wait before GC");
+        Thread.sleep(1000);
+
+        System.out.println("Bounded Replay Leak check: GC");
+        System.gc();
+
+        Thread.sleep(500);
+
+        final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        MemoryUsage memHeap = memoryMXBean.getHeapMemoryUsage();
+        long initial = memHeap.getUsed();
+
+        System.out.printf("Bounded Replay Leak check: Starting: %.3f MB%n", initial / 1024.0 / 1024.0);
+
+        final AtomicLong after = new AtomicLong();
+
+        source.subscribe(new Consumer<byte[]>() {
+            @Override
+            public void accept(byte[] v) throws Exception {
+                System.out.println("Bounded Replay Leak check: Wait before GC 2");
+                Thread.sleep(1000);
+
+                System.out.println("Bounded Replay Leak check:  GC 2");
+                System.gc();
+
+                Thread.sleep(500);
+
+                after.set(memoryMXBean.getHeapMemoryUsage().getUsed());
+            }
+        });
+
+        for (int i = 0; i < 200; i++) {
+            rs.onNext(new byte[1024 * 1024]);
+        }
+        rs.onComplete();
+
+        System.out.printf("Bounded Replay Leak check: After: %.3f MB%n", after.get() / 1024.0 / 1024.0);
+
+        if (initial + 100 * 1024 * 1024 < after.get()) {
+            Assert.fail("Bounded Replay Leak check: Memory leak detected: " + (initial / 1024.0 / 1024.0)
+                    + " -> " + after.get() / 1024.0 / 1024.0);
+        }
     }
 }

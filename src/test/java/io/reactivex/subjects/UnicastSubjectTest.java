@@ -168,9 +168,9 @@ public class UnicastSubjectTest extends SubjectTest<Integer> {
             }
         });
 
-        assertEquals(false, didRunOnTerminate.get());
+        assertFalse(didRunOnTerminate.get());
         us.onError(new RuntimeException("some error"));
-        assertEquals(true, didRunOnTerminate.get());
+        assertTrue(didRunOnTerminate.get());
     }
 
     @Test
@@ -183,9 +183,9 @@ public class UnicastSubjectTest extends SubjectTest<Integer> {
             }
         });
 
-        assertEquals(false, didRunOnTerminate.get());
+        assertFalse(didRunOnTerminate.get());
         us.onComplete();
-        assertEquals(true, didRunOnTerminate.get());
+        assertTrue(didRunOnTerminate.get());
     }
 
     @Test
@@ -200,9 +200,9 @@ public class UnicastSubjectTest extends SubjectTest<Integer> {
 
         final Disposable subscribe = us.subscribe();
 
-        assertEquals(false, didRunOnTerminate.get());
+        assertFalse(didRunOnTerminate.get());
         subscribe.dispose();
-        assertEquals(true, didRunOnTerminate.get());
+        assertTrue(didRunOnTerminate.get());
     }
 
     @Test(expected = NullPointerException.class)
@@ -438,7 +438,6 @@ public class UnicastSubjectTest extends SubjectTest<Integer> {
     public void drainFusedFailFast() {
         UnicastSubject<Integer> us = UnicastSubject.create(false);
 
-
         TestObserver<Integer> to = us.to(ObserverFusion.<Integer>test(QueueFuseable.ANY, false));
 
         us.done = true;
@@ -450,7 +449,6 @@ public class UnicastSubjectTest extends SubjectTest<Integer> {
     @Test
     public void drainFusedFailFastEmpty() {
         UnicastSubject<Integer> us = UnicastSubject.create(false);
-
 
         TestObserver<Integer> to = us.to(ObserverFusion.<Integer>test(QueueFuseable.ANY, false));
 

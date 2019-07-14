@@ -13,9 +13,7 @@
 
 package io.reactivex.internal.operators.observable;
 
-
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -239,6 +237,7 @@ public class ObservableDebounceTest {
         verify(o, never()).onComplete();
         verify(o).onError(any(TestException.class));
     }
+
     @Test
     public void debounceTimedLastIsNotLost() {
         PublishSubject<Integer> source = PublishSubject.create();
@@ -256,6 +255,7 @@ public class ObservableDebounceTest {
         verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test
     public void debounceSelectorLastIsNotLost() {
         PublishSubject<Integer> source = PublishSubject.create();
@@ -471,11 +471,11 @@ public class ObservableDebounceTest {
         new Observable<Integer>() {
             @Override
             protected void subscribeActual(
-                    Observer<? super Integer> s) {
-                s.onSubscribe(Disposables.empty());
+                    Observer<? super Integer> observer) {
+                observer.onSubscribe(Disposables.empty());
                 to.cancel();
-                s.onNext(1);
-                s.onComplete();
+                observer.onNext(1);
+                observer.onComplete();
             }
         }
         .debounce(1, TimeUnit.SECONDS)
@@ -503,5 +503,15 @@ public class ObservableDebounceTest {
         .debounce(1, TimeUnit.SECONDS)
         .test()
         .assertFailure(TestException.class);
+    }
+
+    @Test
+    public void debounceOnEmpty() {
+        Observable.empty().debounce(new Function<Object, ObservableSource<Object>>() {
+            @Override
+            public ObservableSource<Object> apply(Object o) {
+                return Observable.just(new Object());
+            }
+        }).subscribe();
     }
 }

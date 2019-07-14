@@ -10,7 +10,7 @@ It extends the [observer pattern](http://en.wikipedia.org/wiki/Observer_pattern)
 
 #### Version 2.x ([Javadoc](http://reactivex.io/RxJava/2.x/javadoc/))
 
-- single dependency: [Reactive-Streams](https://github.com/reactive-streams/reactive-streams-jvm)  
+- single dependency: [Reactive Streams](https://github.com/reactive-streams/reactive-streams-jvm)  
 - continued support for Java 6+ & [Android](https://github.com/ReactiveX/RxAndroid) 2.3+
 - performance gains through design changes learned through the 1.x cycle and through [Reactive-Streams-Commons](https://github.com/reactor/reactive-streams-commons) research project.
 - Java 8 lambda-friendly API
@@ -33,7 +33,7 @@ The [1.x version](https://github.com/ReactiveX/RxJava/tree/1.x) is end-of-life a
 The first step is to include RxJava 2 into your project, for example, as a Gradle compile dependency:
 
 ```groovy
-compile "io.reactivex.rxjava2:rxjava:2.x.y"
+implementation "io.reactivex.rxjava2:rxjava:2.x.y"
 ```
 
 (Please replace `x` and `y` with the latest version numbers: [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.reactivex.rxjava2/rxjava/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.reactivex.rxjava2/rxjava)
@@ -72,7 +72,7 @@ Flowable.just("Hello world")
 
 RxJava 2 features several base classes you can discover operators on:
 
-  - [`io.reactivex.Flowable`](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html): 0..N flows, supporting Reactive-Streams and backpressure
+  - [`io.reactivex.Flowable`](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Flowable.html): 0..N flows, supporting Reactive Streams and backpressure
   - [`io.reactivex.Observable`](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Observable.html): 0..N flows, no backpressure,
   - [`io.reactivex.Single`](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Single.html): a flow of exactly 1 item or an error,
   - [`io.reactivex.Completable`](http://reactivex.io/RxJava/2.x/javadoc/io/reactivex/Completable.html): a flow without items but only a completion or error signal,
@@ -116,7 +116,7 @@ The preparation of dataflows by applying various intermediate operators happens 
 
 ```java
 Flowable<Integer> flow = Flowable.range(1, 5)
-.map(v -> v* v)
+.map(v -> v * v)
 .filter(v -> v % 3 == 0)
 ;
 ```
@@ -193,7 +193,7 @@ Typically, you can move computations or blocking IO to some other thread via `su
 
 ### Schedulers
 
-RxJava operators don't work with `Thread`s or `ExecutorService`s directly but with so called `Scheduler`s that abstract away sources of concurrency behind an uniform API. RxJava 2 features several standard schedulers accessible via `Schedulers` utility class. 
+RxJava operators don't work with `Thread`s or `ExecutorService`s directly but with so called `Scheduler`s that abstract away sources of concurrency behind a uniform API. RxJava 2 features several standard schedulers accessible via `Schedulers` utility class. 
 
 - `Schedulers.computation()`: Run computation intensive work on a fixed number of dedicated threads in the background. Most asynchronous operator use this as their default `Scheduler`.
 - `Schedulers.io()`: Run I/O-like or blocking operations on a dynamically changing set of threads.
@@ -240,7 +240,7 @@ Note, however, that `flatMap` doesn't guarantee any order and the end result fro
   - `concatMap` that maps and runs one inner flow at a time and
   - `concatMapEager` which runs all inner flows "at once" but the output flow will be in the order those inner flows were created.
 
-Alternatively, there is a [*beta*](#beta) operator `Flowable.parallel()` and type `ParallelFlowable` that helps achieve the same parallel processing pattern:
+Alternatively, the `Flowable.parallel()` operator and the `ParallelFlowable` type help achieve the same parallel processing pattern:
 
 ```java
 Flowable.range(1, 10)
@@ -258,12 +258,10 @@ Flowable.range(1, 10)
 ```java
 Flowable<Inventory> inventorySource = warehouse.getInventoryAsync();
 
-inventorySource.flatMap(inventoryItem ->
-    erp.getDemandAsync(inventoryItem.getId())
-    .map(demand 
-        -> System.out.println("Item " + inventoryItem.getName() + " has demand " + demand));
-  )
-  .subscribe();
+inventorySource
+    .flatMap(inventoryItem -> erp.getDemandAsync(inventoryItem.getId())
+            .map(demand -> "Item " + inventoryItem.getName() + " has demand " + demand))
+    .subscribe(System.out::println);
 ```
 
 ### Continuations
@@ -369,7 +367,7 @@ Each reactive base class features operators that can perform such conversions, i
 |----------|----------|------------|--------|-------|-------------|
 |**Flowable**  |          | `toObservable` | `first`, `firstOrError`, `single`, `singleOrError`, `last`, `lastOrError`<sup>1</sup> | `firstElement`, `singleElement`, `lastElement` | `ignoreElements` |
 |**Observable**| `toFlowable`<sup>2</sup> |  | `first`, `firstOrError`, `single`, `singleOrError`, `last`, `lastOrError`<sup>1</sup> | `firstElement`, `singleElement`, `lastElement` | `ignoreElements` |
-|**Single** | `toFlowable`<sup>3</sup> | `toObservable` |  | `toMaybe` | `toCompletable` |
+|**Single** | `toFlowable`<sup>3</sup> | `toObservable` |  | `toMaybe` | `ignoreElement` |
 |**Maybe** | `toFlowable`<sup>3</sup> | `toObservable` | `toSingle` |  | `ignoreElement` |
 |**Completable** | `toFlowable` | `toObservable` | `toSingle` | `toMaybe` |  |
 

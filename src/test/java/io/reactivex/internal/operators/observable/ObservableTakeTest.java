@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
@@ -208,13 +207,13 @@ public class ObservableTakeTest {
         Observable.unsafeCreate(new ObservableSource<Integer>() {
 
             @Override
-            public void subscribe(Observer<? super Integer> s) {
+            public void subscribe(Observer<? super Integer> observer) {
                 Disposable bs = Disposables.empty();
-                s.onSubscribe(bs);
+                observer.onSubscribe(bs);
                 for (int i = 0; !bs.isDisposed(); i++) {
                     System.out.println("Emit: " + i);
                     count.incrementAndGet();
-                    s.onNext(i);
+                    observer.onNext(i);
                 }
             }
 

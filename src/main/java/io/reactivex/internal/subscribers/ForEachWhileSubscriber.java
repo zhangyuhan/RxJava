@@ -28,7 +28,6 @@ public final class ForEachWhileSubscriber<T>
 extends AtomicReference<Subscription>
 implements FlowableSubscriber<T>, Disposable {
 
-
     private static final long serialVersionUID = -4403180040475402120L;
 
     final Predicate<? super T> onNext;
@@ -109,6 +108,6 @@ implements FlowableSubscriber<T>, Disposable {
 
     @Override
     public boolean isDisposed() {
-        return SubscriptionHelper.isCancelled(this.get());
+        return this.get() == SubscriptionHelper.CANCELLED;
     }
 }

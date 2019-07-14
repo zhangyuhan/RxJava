@@ -288,6 +288,7 @@ public class ReplaySubjectBoundedConcurrencyTest {
     }
 
     /**
+     * Make sure emission-subscription races are handled correctly.
      * https://github.com/ReactiveX/RxJava/issues/1147
      */
     @Test
@@ -322,6 +323,7 @@ public class ReplaySubjectBoundedConcurrencyTest {
             }
         }
     }
+
     @Test
     public void testReplaySubjectEmissionSubscriptionRace() throws Exception {
         Scheduler s = Schedulers.io();
@@ -407,6 +409,7 @@ public class ReplaySubjectBoundedConcurrencyTest {
             worker.dispose();
         }
     }
+
     @Test(timeout = 5000)
     public void testConcurrentSizeAndHasAnyValue() throws InterruptedException {
         final ReplaySubject<Object> rs = ReplaySubject.createUnbounded();
@@ -461,6 +464,7 @@ public class ReplaySubjectBoundedConcurrencyTest {
 
         t.join();
     }
+
     @Test(timeout = 5000)
     public void testConcurrentSizeAndHasAnyValueBounded() throws InterruptedException {
         final ReplaySubject<Object> rs = ReplaySubject.createWithSize(3);
@@ -504,6 +508,7 @@ public class ReplaySubjectBoundedConcurrencyTest {
 
         t.join();
     }
+
     @Test(timeout = 10000)
     public void testConcurrentSizeAndHasAnyValueTimeBounded() throws InterruptedException {
         final ReplaySubject<Object> rs = ReplaySubject.createWithTime(1, TimeUnit.MILLISECONDS, Schedulers.computation());

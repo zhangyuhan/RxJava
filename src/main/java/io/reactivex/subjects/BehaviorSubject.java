@@ -249,9 +249,9 @@ public final class BehaviorSubject<T> extends Subject<T> {
     }
 
     @Override
-    public void onSubscribe(Disposable s) {
+    public void onSubscribe(Disposable d) {
         if (terminalEvent.get() != null) {
-            s.dispose();
+            d.dispose();
         }
     }
 
@@ -297,7 +297,6 @@ public final class BehaviorSubject<T> extends Subject<T> {
     public boolean hasObservers() {
         return subscribers.get().length != 0;
     }
-
 
     /* test support*/ int subscriberCount() {
         return subscribers.get().length;
@@ -470,7 +469,7 @@ public final class BehaviorSubject<T> extends Subject<T> {
 
     static final class BehaviorDisposable<T> implements Disposable, NonThrowingPredicate<Object> {
 
-        final Observer<? super T> actual;
+        final Observer<? super T> downstream;
         final BehaviorSubject<T> state;
 
         boolean next;
@@ -484,7 +483,7 @@ public final class BehaviorSubject<T> extends Subject<T> {
         long index;
 
         BehaviorDisposable(Observer<? super T> actual, BehaviorSubject<T> state) {
-            this.actual = actual;
+            this.downstream = actual;
             this.state = state;
         }
 
@@ -567,7 +566,7 @@ public final class BehaviorSubject<T> extends Subject<T> {
 
         @Override
         public boolean test(Object o) {
-            return cancelled || NotificationLite.accept(o, actual);
+            return cancelled || NotificationLite.accept(o, downstream);
         }
 
         void emitLoop() {

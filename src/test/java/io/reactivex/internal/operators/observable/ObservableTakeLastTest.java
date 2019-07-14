@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -179,7 +178,7 @@ public class ObservableTakeLastTest {
                 cancel();
             }
         });
-        assertEquals(1,count.get());
+        assertEquals(1, count.get());
     }
 
     @Test

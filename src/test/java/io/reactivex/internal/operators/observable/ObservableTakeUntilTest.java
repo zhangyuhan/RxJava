@@ -156,10 +156,10 @@ public class ObservableTakeUntilTest {
     private static class TestObservable implements ObservableSource<String> {
 
         Observer<? super String> observer;
-        Disposable s;
+        Disposable upstream;
 
-        TestObservable(Disposable s) {
-            this.s = s;
+        TestObservable(Disposable d) {
+            this.upstream = d;
         }
 
         /* used to simulate subscription */
@@ -180,7 +180,7 @@ public class ObservableTakeUntilTest {
         @Override
         public void subscribe(Observer<? super String> observer) {
             this.observer = observer;
-            observer.onSubscribe(s);
+            observer.onSubscribe(upstream);
         }
     }
 
@@ -210,6 +210,7 @@ public class ObservableTakeUntilTest {
         // 2.0.2 - not anymore
 //        assertTrue("Not cancelled!", ts.isCancelled());
     }
+
     @Test
     public void testMainCompletes() {
         PublishSubject<Integer> source = PublishSubject.create();
@@ -234,6 +235,7 @@ public class ObservableTakeUntilTest {
         // 2.0.2 - not anymore
 //        assertTrue("Not cancelled!", ts.isCancelled());
     }
+
     @Test
     public void testDownstreamUnsubscribes() {
         PublishSubject<Integer> source = PublishSubject.create();
@@ -272,7 +274,6 @@ public class ObservableTakeUntilTest {
             }
         });
     }
-
 
     @Test
     public void untilPublisherMainSuccess() {

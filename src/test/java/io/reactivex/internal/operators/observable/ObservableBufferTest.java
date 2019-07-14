@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -497,6 +496,7 @@ public class ObservableBufferTest {
         verify(o, never()).onComplete();
         verify(o, never()).onNext(any());
     }
+
     @Test(timeout = 2000)
     public void bufferWithSizeTake1() {
         Observable<Integer> source = Observable.just(1).repeat();
@@ -526,6 +526,7 @@ public class ObservableBufferTest {
         verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test(timeout = 2000)
     public void bufferWithTimeTake1() {
         Observable<Long> source = Observable.interval(40, 40, TimeUnit.MILLISECONDS, scheduler);
@@ -542,6 +543,7 @@ public class ObservableBufferTest {
         verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test(timeout = 2000)
     public void bufferWithTimeSkipTake2() {
         Observable<Long> source = Observable.interval(40, 40, TimeUnit.MILLISECONDS, scheduler);
@@ -560,6 +562,7 @@ public class ObservableBufferTest {
         inOrder.verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test(timeout = 2000)
     public void bufferWithBoundaryTake2() {
         Observable<Long> boundary = Observable.interval(60, 60, TimeUnit.MILLISECONDS, scheduler);
@@ -614,6 +617,7 @@ public class ObservableBufferTest {
         inOrder.verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test
     public void bufferWithSizeThrows() {
         PublishSubject<Integer> source = PublishSubject.create();
@@ -683,6 +687,7 @@ public class ObservableBufferTest {
         inOrder.verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test
     public void bufferWithStartEndStartThrows() {
         PublishSubject<Integer> start = PublishSubject.create();
@@ -711,6 +716,7 @@ public class ObservableBufferTest {
         verify(o, never()).onComplete();
         verify(o).onError(any(TestException.class));
     }
+
     @Test
     public void bufferWithStartEndEndFunctionThrows() {
         PublishSubject<Integer> start = PublishSubject.create();
@@ -738,6 +744,7 @@ public class ObservableBufferTest {
         verify(o, never()).onComplete();
         verify(o).onError(any(TestException.class));
     }
+
     @Test
     public void bufferWithStartEndEndThrows() {
         PublishSubject<Integer> start = PublishSubject.create();
@@ -771,16 +778,18 @@ public class ObservableBufferTest {
         final Observer<Object> o = TestHelper.mockObserver();
 
         final CountDownLatch cdl = new CountDownLatch(1);
-        DisposableObserver<Object> s = new DisposableObserver<Object>() {
+        DisposableObserver<Object> observer = new DisposableObserver<Object>() {
             @Override
             public void onNext(Object t) {
                 o.onNext(t);
             }
+
             @Override
             public void onError(Throwable e) {
                 o.onError(e);
                 cdl.countDown();
             }
+
             @Override
             public void onComplete() {
                 o.onComplete();
@@ -788,7 +797,7 @@ public class ObservableBufferTest {
             }
         };
 
-        Observable.range(1, 1).delay(1, TimeUnit.SECONDS).buffer(2, TimeUnit.SECONDS).subscribe(s);
+        Observable.range(1, 1).delay(1, TimeUnit.SECONDS).buffer(2, TimeUnit.SECONDS).subscribe(observer);
 
         cdl.await();
 
@@ -796,7 +805,7 @@ public class ObservableBufferTest {
         verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
 
-        assertFalse(s.isDisposed());
+        assertFalse(observer.isDisposed());
     }
 
     @SuppressWarnings("unchecked")
@@ -1547,7 +1556,7 @@ public class ObservableBufferTest {
                                 return integer;
                             }
                         })
-                .buffer(Observable.interval(0,200, TimeUnit.MILLISECONDS),
+                .buffer(Observable.interval(0, 200, TimeUnit.MILLISECONDS),
                         new Function<Long, Observable<?>>() {
                             @Override
                             public Observable<?> apply(Long a) {
@@ -1570,7 +1579,7 @@ public class ObservableBufferTest {
                                 return integer;
                             }
                         })
-                .buffer(Observable.interval(0,100, TimeUnit.MILLISECONDS),
+                .buffer(Observable.interval(0, 100, TimeUnit.MILLISECONDS),
                         new Function<Long, Observable<?>>() {
                             @Override
                             public Observable<?> apply(Long a) {
@@ -1599,24 +1608,24 @@ public class ObservableBufferTest {
         try {
             new Observable<Object>() {
                 @Override
-                protected void subscribeActual(Observer<? super Object> s) {
+                protected void subscribeActual(Observer<? super Object> observer) {
                     Disposable bs1 = Disposables.empty();
                     Disposable bs2 = Disposables.empty();
 
-                    s.onSubscribe(bs1);
+                    observer.onSubscribe(bs1);
 
                     assertFalse(bs1.isDisposed());
                     assertFalse(bs2.isDisposed());
 
-                    s.onSubscribe(bs2);
+                    observer.onSubscribe(bs2);
 
                     assertFalse(bs1.isDisposed());
                     assertTrue(bs2.isDisposed());
 
-                    s.onError(new IOException());
-                    s.onComplete();
-                    s.onNext(1);
-                    s.onError(new TestException());
+                    observer.onError(new IOException());
+                    observer.onComplete();
+                    observer.onNext(1);
+                    observer.onError(new TestException());
                 }
             }
             .buffer(Observable.never(), Functions.justFunction(Observable.never()))
@@ -1720,30 +1729,30 @@ public class ObservableBufferTest {
             Observable.never()
             .buffer(new Observable<Object>() {
                 @Override
-                protected void subscribeActual(Observer<? super Object> s) {
+                protected void subscribeActual(Observer<? super Object> observer) {
 
-                    assertFalse(((Disposable)s).isDisposed());
+                    assertFalse(((Disposable)observer).isDisposed());
 
                     Disposable bs1 = Disposables.empty();
                     Disposable bs2 = Disposables.empty();
 
-                    s.onSubscribe(bs1);
+                    observer.onSubscribe(bs1);
 
                     assertFalse(bs1.isDisposed());
                     assertFalse(bs2.isDisposed());
 
-                    s.onSubscribe(bs2);
+                    observer.onSubscribe(bs2);
 
                     assertFalse(bs1.isDisposed());
                     assertTrue(bs2.isDisposed());
 
-                    s.onError(new IOException());
+                    observer.onError(new IOException());
 
-                    assertTrue(((Disposable)s).isDisposed());
+                    assertTrue(((Disposable)observer).isDisposed());
 
-                    s.onComplete();
-                    s.onNext(1);
-                    s.onError(new TestException());
+                    observer.onComplete();
+                    observer.onNext(1);
+                    observer.onError(new TestException());
                 }
             }, Functions.justFunction(Observable.never()))
             .test()
@@ -1765,30 +1774,30 @@ public class ObservableBufferTest {
             .buffer(Observable.just(1).concatWith(Observable.<Integer>never()),
                     Functions.justFunction(new Observable<Object>() {
                 @Override
-                protected void subscribeActual(Observer<? super Object> s) {
+                protected void subscribeActual(Observer<? super Object> observer) {
 
-                    assertFalse(((Disposable)s).isDisposed());
+                    assertFalse(((Disposable)observer).isDisposed());
 
                     Disposable bs1 = Disposables.empty();
                     Disposable bs2 = Disposables.empty();
 
-                    s.onSubscribe(bs1);
+                    observer.onSubscribe(bs1);
 
                     assertFalse(bs1.isDisposed());
                     assertFalse(bs2.isDisposed());
 
-                    s.onSubscribe(bs2);
+                    observer.onSubscribe(bs2);
 
                     assertFalse(bs1.isDisposed());
                     assertTrue(bs2.isDisposed());
 
-                    s.onError(new IOException());
+                    observer.onError(new IOException());
 
-                    assertTrue(((Disposable)s).isDisposed());
+                    assertTrue(((Disposable)observer).isDisposed());
 
-                    s.onComplete();
-                    s.onNext(1);
-                    s.onError(new TestException());
+                    observer.onComplete();
+                    observer.onNext(1);
+                    observer.onError(new TestException());
                 }
             }))
             .test()
@@ -1872,10 +1881,10 @@ public class ObservableBufferTest {
             BehaviorSubject.createDefault(1)
             .buffer(Functions.justCallable(new Observable<Integer>() {
                 @Override
-                protected void subscribeActual(Observer<? super Integer> s) {
-                    s.onSubscribe(Disposables.empty());
-                    s.onError(new TestException("first"));
-                    s.onError(new TestException("second"));
+                protected void subscribeActual(Observer<? super Integer> observer) {
+                    observer.onSubscribe(Disposables.empty());
+                    observer.onError(new TestException("first"));
+                    observer.onError(new TestException("second"));
                 }
             }))
             .test()
@@ -2125,5 +2134,20 @@ public class ObservableBufferTest {
                 return o.buffer(1, 2);
             }
         });
+    }
+
+    @Test
+    public void bufferExactFailingSupplier() {
+        Observable.empty()
+                .buffer(1, TimeUnit.SECONDS, Schedulers.computation(), 10, new Callable<List<Object>>() {
+                    @Override
+                    public List<Object> call() throws Exception {
+                        throw new TestException();
+                    }
+                }, false)
+                .test()
+                .awaitDone(1, TimeUnit.SECONDS)
+                .assertFailure(TestException.class)
+        ;
     }
 }

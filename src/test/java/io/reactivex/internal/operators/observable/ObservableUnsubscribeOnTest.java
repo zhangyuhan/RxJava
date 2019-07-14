@@ -46,7 +46,10 @@ public class ObservableUnsubscribeOnTest {
                     t1.onSubscribe(subscription);
                     t1.onNext(1);
                     t1.onNext(2);
-                    t1.onComplete();
+                    // observeOn will prevent canceling the upstream upon its termination now
+                    // this call is racing for that state in this test
+                    // not doing it will make sure the unsubscribeOn always gets through
+                    // t1.onComplete();
                 }
             });
 
@@ -69,7 +72,7 @@ public class ObservableUnsubscribeOnTest {
 
             System.out.println("unsubscribeThread: " + unsubscribeThread);
             System.out.println("subscribeThread.get(): " + subscribeThread.get());
-            assertTrue(unsubscribeThread.toString(), unsubscribeThread == uiEventLoop.getThread());
+            assertSame(unsubscribeThread.toString(), unsubscribeThread, uiEventLoop.getThread());
 
             observer.assertValues(1, 2);
             observer.assertTerminated();
@@ -92,7 +95,10 @@ public class ObservableUnsubscribeOnTest {
                     t1.onSubscribe(subscription);
                     t1.onNext(1);
                     t1.onNext(2);
-                    t1.onComplete();
+                    // observeOn will prevent canceling the upstream upon its termination now
+                    // this call is racing for that state in this test
+                    // not doing it will make sure the unsubscribeOn always gets through
+                    // t1.onComplete();
                 }
             });
 

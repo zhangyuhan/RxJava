@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -69,6 +68,7 @@ public class ObservableRetryWithPredicateTest {
         inOrder.verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test
     public void testRetryTwice() {
         Observable<Integer> source = Observable.unsafeCreate(new ObservableSource<Integer>() {
@@ -89,8 +89,7 @@ public class ObservableRetryWithPredicateTest {
             }
         });
 
-        @SuppressWarnings("unchecked")
-        DefaultObserver<Integer> o = mock(DefaultObserver.class);
+        Observer<Integer> o = TestHelper.mockObserver();
         InOrder inOrder = inOrder(o);
 
         source.retry(retryTwice).subscribe(o);
@@ -105,6 +104,7 @@ public class ObservableRetryWithPredicateTest {
         verify(o, never()).onError(any(Throwable.class));
 
     }
+
     @Test
     public void testRetryTwiceAndGiveUp() {
         Observable<Integer> source = Observable.unsafeCreate(new ObservableSource<Integer>() {
@@ -117,8 +117,7 @@ public class ObservableRetryWithPredicateTest {
             }
         });
 
-        @SuppressWarnings("unchecked")
-        DefaultObserver<Integer> o = mock(DefaultObserver.class);
+        Observer<Integer> o = TestHelper.mockObserver();
         InOrder inOrder = inOrder(o);
 
         source.retry(retryTwice).subscribe(o);
@@ -133,6 +132,7 @@ public class ObservableRetryWithPredicateTest {
         verify(o, never()).onComplete();
 
     }
+
     @Test
     public void testRetryOnSpecificException() {
         Observable<Integer> source = Observable.unsafeCreate(new ObservableSource<Integer>() {
@@ -153,8 +153,7 @@ public class ObservableRetryWithPredicateTest {
             }
         });
 
-        @SuppressWarnings("unchecked")
-        DefaultObserver<Integer> o = mock(DefaultObserver.class);
+        Observer<Integer> o = TestHelper.mockObserver();
         InOrder inOrder = inOrder(o);
 
         source.retry(retryOnTestException).subscribe(o);
@@ -168,6 +167,7 @@ public class ObservableRetryWithPredicateTest {
         inOrder.verify(o).onComplete();
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test
     public void testRetryOnSpecificExceptionAndNotOther() {
         final IOException ioe = new IOException();
@@ -190,8 +190,7 @@ public class ObservableRetryWithPredicateTest {
             }
         });
 
-        @SuppressWarnings("unchecked")
-        DefaultObserver<Integer> o = mock(DefaultObserver.class);
+        Observer<Integer> o = TestHelper.mockObserver();
         InOrder inOrder = inOrder(o);
 
         source.retry(retryOnTestException).subscribe(o);
@@ -229,7 +228,7 @@ public class ObservableRetryWithPredicateTest {
         Observer<Long> observer = TestHelper.mockObserver();
 
         // Observable that always fails after 100ms
-        ObservableRetryTest.SlowObservable so = new ObservableRetryTest.SlowObservable(100, 0);
+        ObservableRetryTest.SlowObservable so = new ObservableRetryTest.SlowObservable(100, 0, "testUnsubscribeAfterError");
         Observable<Long> o = Observable
                 .unsafeCreate(so)
                 .retry(retry5);
@@ -255,7 +254,7 @@ public class ObservableRetryWithPredicateTest {
         Observer<Long> observer = TestHelper.mockObserver();
 
         // Observable that sends every 100ms (timeout fails instead)
-        ObservableRetryTest.SlowObservable so = new ObservableRetryTest.SlowObservable(100, 10);
+        ObservableRetryTest.SlowObservable so = new ObservableRetryTest.SlowObservable(100, 10, "testTimeoutWithRetry");
         Observable<Long> o = Observable
                 .unsafeCreate(so)
                 .timeout(80, TimeUnit.MILLISECONDS)
@@ -292,6 +291,7 @@ public class ObservableRetryWithPredicateTest {
         assertEquals(6, c.get());
         assertEquals(Collections.singletonList(e), to.errors());
     }
+
     @Test
     public void testJustAndRetry() throws Exception {
         final AtomicBoolean throwException = new AtomicBoolean(true);
@@ -333,7 +333,7 @@ public class ObservableRetryWithPredicateTest {
                 System.out.println(t);
                 list.add(t);
             }});
-        assertEquals(Arrays.asList(1L,1L,2L,3L), list);
+        assertEquals(Arrays.asList(1L, 1L, 2L, 3L), list);
     }
 
     @Test
@@ -357,7 +357,7 @@ public class ObservableRetryWithPredicateTest {
                 System.out.println(t);
                 list.add(t);
             }});
-        assertEquals(Arrays.asList(1L,1L,2L,3L), list);
+        assertEquals(Arrays.asList(1L, 1L, 2L, 3L), list);
     }
 
     @Test

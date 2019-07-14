@@ -28,6 +28,7 @@ import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.disposables.*;
 import io.reactivex.functions.*;
+import io.reactivex.internal.functions.Functions;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.observers.*;
 import io.reactivex.schedulers.*;
@@ -144,7 +145,6 @@ public class ObservableTest {
         verify(w, never()).onComplete();
         verify(w, times(1)).onError(any(RuntimeException.class));
     }
-
 
     @Test
     public void testCountAFewItems() {
@@ -346,7 +346,7 @@ public class ObservableTest {
         final RuntimeException re = new RuntimeException("bad impl");
         Observable<String> o = Observable.unsafeCreate(new ObservableSource<String>() {
             @Override
-            public void subscribe(Observer<? super String> s) { throw re; }
+            public void subscribe(Observer<? super String> observer) { throw re; }
         });
 
         o.subscribe(observer);
@@ -358,7 +358,8 @@ public class ObservableTest {
     @Test
     public void testMaterializeDematerializeChaining() {
         Observable<Integer> obs = Observable.just(1);
-        Observable<Integer> chained = obs.materialize().dematerialize();
+        Observable<Integer> chained = obs.materialize()
+                .dematerialize(Functions.<Notification<Integer>>identity());
 
         Observer<Integer> observer = TestHelper.mockObserver();
 
@@ -566,7 +567,7 @@ public class ObservableTest {
         }).replay();
 
         // we connect immediately and it will emit the value
-        Disposable s = o.connect();
+        Disposable connection = o.connect();
         try {
 
             // we then expect the following 2 subscriptions to get that same value
@@ -595,7 +596,7 @@ public class ObservableTest {
             }
             assertEquals(1, counter.get());
         } finally {
-            s.dispose();
+            connection.dispose();
         }
     }
 
@@ -1049,7 +1050,7 @@ public class ObservableTest {
     public void testTakeWhileToList() {
         final int expectedCount = 3;
         final AtomicInteger count = new AtomicInteger();
-        for (int i = 0;i < expectedCount; i++) {
+        for (int i = 0; i < expectedCount; i++) {
             Observable
                     .just(Boolean.TRUE, Boolean.FALSE)
                     .takeWhile(new Predicate<Boolean>() {
@@ -1097,7 +1098,7 @@ public class ObservableTest {
         Observable.error(new RuntimeException("oops"))
             .materialize()
             .delay(1, TimeUnit.SECONDS)
-            .dematerialize()
+            .dematerialize(Functions.<Notification<Object>>identity())
             .subscribe(subject);
 
         subject.subscribe();
@@ -1151,16 +1152,16 @@ public class ObservableTest {
 
     @Test
     public void testExtend() {
-        final TestObserver<Object> subscriber = new TestObserver<Object>();
+        final TestObserver<Object> to = new TestObserver<Object>();
         final Object value = new Object();
         Object returned = Observable.just(value).to(new Function<Observable<Object>, Object>() {
             @Override
             public Object apply(Observable<Object> onSubscribe) {
-                    onSubscribe.subscribe(subscriber);
-                    subscriber.assertNoErrors();
-                    subscriber.assertComplete();
-                    subscriber.assertValue(value);
-                    return subscriber.values().get(0);
+                    onSubscribe.subscribe(to);
+                    to.assertNoErrors();
+                    to.assertComplete();
+                    to.assertValue(value);
+                    return to.values().get(0);
                 }
         });
         assertSame(returned, value);
@@ -1168,16 +1169,16 @@ public class ObservableTest {
 
     @Test
     public void testAsExtend() {
-        final TestObserver<Object> subscriber = new TestObserver<Object>();
+        final TestObserver<Object> to = new TestObserver<Object>();
         final Object value = new Object();
         Object returned = Observable.just(value).as(new ObservableConverter<Object, Object>() {
             @Override
             public Object apply(Observable<Object> onSubscribe) {
-                onSubscribe.subscribe(subscriber);
-                subscriber.assertNoErrors();
-                subscriber.assertComplete();
-                subscriber.assertValue(value);
-                return subscriber.values().get(0);
+                onSubscribe.subscribe(to);
+                to.assertNoErrors();
+                to.assertComplete();
+                to.assertValue(value);
+                return to.values().get(0);
             }
         });
         assertSame(returned, value);

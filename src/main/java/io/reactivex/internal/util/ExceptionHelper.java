@@ -14,6 +14,7 @@
 package io.reactivex.internal.util;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.reactivex.exceptions.CompositeException;
@@ -119,6 +120,14 @@ public final class ExceptionHelper {
             return (Exception)e;
         }
         throw (E)e;
+    }
+
+    public static String timeoutMessage(long timeout, TimeUnit unit) {
+        return "The source did not signal an event for "
+                + timeout
+                + " "
+                + unit.toString().toLowerCase()
+                + " and has been terminated.";
     }
 
     static final class Termination extends Throwable {

@@ -11,7 +11,7 @@
  * the License for the specific language governing permissions and limitations under the License.
  */
 
-package io.reactivex;
+package io.reactivex.validators;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -20,6 +20,9 @@ import java.util.concurrent.*;
 import org.junit.Test;
 import org.reactivestreams.*;
 
+import io.reactivex.*;
+import io.reactivex.Observable;
+import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.exceptions.TestException;
 import io.reactivex.functions.*;
@@ -258,6 +261,10 @@ public class ParamValidationCheckerTest {
         addOverride(new ParamOverride(Completable.class, 0, ParamMode.ANY, "delay", Long.TYPE, TimeUnit.class, Scheduler.class));
         addOverride(new ParamOverride(Completable.class, 0, ParamMode.ANY, "delay", Long.TYPE, TimeUnit.class, Scheduler.class, Boolean.TYPE));
 
+        // negative time is considered as zero time
+        addOverride(new ParamOverride(Completable.class, 0, ParamMode.ANY, "delaySubscription", Long.TYPE, TimeUnit.class));
+        addOverride(new ParamOverride(Completable.class, 0, ParamMode.ANY, "delaySubscription", Long.TYPE, TimeUnit.class, Scheduler.class));
+
         // zero repeat is allowed
         addOverride(new ParamOverride(Completable.class, 0, ParamMode.NON_NEGATIVE, "repeat", Long.TYPE));
 
@@ -322,7 +329,6 @@ public class ParamValidationCheckerTest {
         addOverride(new ParamOverride(Single.class, 0, ParamMode.ANY, "delay", Long.TYPE, TimeUnit.class, Boolean.TYPE));
         addOverride(new ParamOverride(Single.class, 0, ParamMode.ANY, "delay", Long.TYPE, TimeUnit.class, Scheduler.class));
         addOverride(new ParamOverride(Single.class, 0, ParamMode.ANY, "delay", Long.TYPE, TimeUnit.class, Scheduler.class, Boolean.TYPE));
-
 
         // zero repeat is allowed
         addOverride(new ParamOverride(Single.class, 0, ParamMode.NON_NEGATIVE, "repeat", Long.TYPE));
@@ -1140,7 +1146,7 @@ public class ParamValidationCheckerTest {
     static final class NeverObservable extends Observable<Object> {
 
         @Override
-        public void subscribeActual(Observer<? super Object> s) {
+        public void subscribeActual(Observer<? super Object> observer) {
             // not invoked, the class is a placeholder default value
         }
 
@@ -1153,7 +1159,7 @@ public class ParamValidationCheckerTest {
     static final class NeverSingle extends Single<Object> {
 
         @Override
-        public void subscribeActual(SingleObserver<? super Object> s) {
+        public void subscribeActual(SingleObserver<? super Object> observer) {
             // not invoked, the class is a placeholder default value
         }
 
@@ -1166,7 +1172,7 @@ public class ParamValidationCheckerTest {
     static final class NeverMaybe extends Maybe<Object> {
 
         @Override
-        public void subscribeActual(MaybeObserver<? super Object> s) {
+        public void subscribeActual(MaybeObserver<? super Object> observer) {
             // not invoked, the class is a placeholder default value
         }
 
@@ -1178,7 +1184,7 @@ public class ParamValidationCheckerTest {
     static final class NeverCompletable extends Completable {
 
         @Override
-        public void subscribeActual(CompletableObserver s) {
+        public void subscribeActual(CompletableObserver observer) {
             // not invoked, the class is a placeholder default value
         }
 

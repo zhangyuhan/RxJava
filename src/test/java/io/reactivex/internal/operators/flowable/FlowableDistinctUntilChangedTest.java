@@ -13,7 +13,6 @@
 
 package io.reactivex.internal.operators.flowable;
 
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -234,7 +233,7 @@ public class FlowableDistinctUntilChangedTest {
 
     @Test
     public void customComparator() {
-        Flowable<String> source = Flowable.just("a", "b", "B", "A","a", "C");
+        Flowable<String> source = Flowable.just("a", "b", "B", "A", "a", "C");
 
         TestSubscriber<String> ts = TestSubscriber.create();
 
@@ -253,7 +252,7 @@ public class FlowableDistinctUntilChangedTest {
 
     @Test
     public void customComparatorThrows() {
-        Flowable<String> source = Flowable.just("a", "b", "B", "A","a", "C");
+        Flowable<String> source = Flowable.just("a", "b", "B", "A", "a", "C");
 
         TestSubscriber<String> ts = TestSubscriber.create();
 
@@ -468,7 +467,6 @@ public class FlowableDistinctUntilChangedTest {
             }
         })
         .subscribe(ts);
-
 
         TestHelper.emit(up, 1, 2, 1, 3, 3, 4, 3, 5, 5);
 

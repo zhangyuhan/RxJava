@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -87,6 +86,7 @@ public class ObservableTimerTest {
         to.assertNotComplete();
         to.assertNoErrors();
     }
+
     @Test
     public void testInterval() {
         Observable<Long> w = Observable.interval(1, TimeUnit.SECONDS, scheduler);
@@ -227,6 +227,7 @@ public class ObservableTimerTest {
         to2.assertNoErrors();
         to2.assertNotComplete();
     }
+
     @Test
     public void testOnceObserverThrows() {
         Observable<Long> source = Observable.timer(100, TimeUnit.MILLISECONDS, scheduler);
@@ -255,6 +256,7 @@ public class ObservableTimerTest {
         verify(observer, never()).onNext(anyLong());
         verify(observer, never()).onComplete();
     }
+
     @Test
     public void testPeriodicObserverThrows() {
         Observable<Long> source = Observable.interval(100, 100, TimeUnit.MILLISECONDS, scheduler);

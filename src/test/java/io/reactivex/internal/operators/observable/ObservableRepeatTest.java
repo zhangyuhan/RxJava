@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
@@ -30,6 +29,7 @@ import io.reactivex.disposables.*;
 import io.reactivex.exceptions.TestException;
 import io.reactivex.functions.*;
 import io.reactivex.observers.TestObserver;
+import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
@@ -323,5 +323,130 @@ public class ObservableRepeatTest {
         })
         .test()
         .assertFailure(TestException.class, 1, 2, 3);
+    }
+
+    @Test
+    public void noCancelPreviousRepeat() {
+        final AtomicInteger counter = new AtomicInteger();
+
+        Observable<Integer> source = Observable.just(1).doOnDispose(new Action() {
+            @Override
+            public void run() throws Exception {
+                counter.getAndIncrement();
+            }
+        });
+
+        source.repeat(5)
+        .test()
+        .assertResult(1, 1, 1, 1, 1);
+
+        assertEquals(0, counter.get());
+    }
+
+    @Test
+    public void noCancelPreviousRepeatUntil() {
+        final AtomicInteger counter = new AtomicInteger();
+
+        Observable<Integer> source = Observable.just(1).doOnDispose(new Action() {
+            @Override
+            public void run() throws Exception {
+                counter.getAndIncrement();
+            }
+        });
+
+        final AtomicInteger times = new AtomicInteger();
+
+        source.repeatUntil(new BooleanSupplier() {
+            @Override
+            public boolean getAsBoolean() throws Exception {
+                return times.getAndIncrement() == 4;
+            }
+        })
+        .test()
+        .assertResult(1, 1, 1, 1, 1);
+
+        assertEquals(0, counter.get());
+    }
+
+    @Test
+    public void noCancelPreviousRepeatWhen() {
+        final AtomicInteger counter = new AtomicInteger();
+
+        Observable<Integer> source = Observable.just(1).doOnDispose(new Action() {
+            @Override
+            public void run() throws Exception {
+                counter.getAndIncrement();
+            }
+        });
+
+        final AtomicInteger times = new AtomicInteger();
+
+        source.repeatWhen(new Function<Observable<Object>, ObservableSource<?>>() {
+            @Override
+            public ObservableSource<?> apply(Observable<Object> e) throws Exception {
+                return e.takeWhile(new Predicate<Object>() {
+                    @Override
+                    public boolean test(Object v) throws Exception {
+                        return times.getAndIncrement() < 4;
+                    }
+                });
+            }
+        })
+        .test()
+        .assertResult(1, 1, 1, 1, 1);
+
+        assertEquals(0, counter.get());
+    }
+
+    @Test
+    public void repeatFloodNoSubscriptionError() {
+        List<Throwable> errors = TestHelper.trackPluginErrors();
+
+        try {
+            final PublishSubject<Integer> source = PublishSubject.create();
+            final PublishSubject<Integer> signaller = PublishSubject.create();
+
+            for (int i = 0; i < TestHelper.RACE_DEFAULT_LOOPS; i++) {
+
+                TestObserver<Integer> to = source.take(1)
+                .repeatWhen(new Function<Observable<Object>, ObservableSource<Integer>>() {
+                    @Override
+                    public ObservableSource<Integer> apply(Observable<Object> v)
+                            throws Exception {
+                        return signaller;
+                    }
+                }).test();
+
+                Runnable r1 = new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < TestHelper.RACE_DEFAULT_LOOPS; i++) {
+                            source.onNext(1);
+                        }
+                    }
+                };
+                Runnable r2 = new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < TestHelper.RACE_DEFAULT_LOOPS; i++) {
+                            signaller.onNext(1);
+                        }
+                    }
+                };
+
+                TestHelper.race(r1, r2);
+
+                to.dispose();
+            }
+
+            if (!errors.isEmpty()) {
+                for (Throwable e : errors) {
+                    e.printStackTrace();
+                }
+                fail(errors + "");
+            }
+        } finally {
+            RxJavaPlugins.reset();
+        }
     }
 }

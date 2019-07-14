@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.*;
 
 import io.reactivex.*;
-import io.reactivex.annotations.Experimental;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.internal.disposables.DisposableHelper;
 
@@ -28,11 +27,10 @@ import io.reactivex.internal.disposables.DisposableHelper;
  * it tries to emit the latest item from upstream. If there was no upstream item,
  * in the meantime, the next upstream item is emitted immediately and the
  * timed process repeats.
- *
+ * <p>History: 2.1.14 - experimental
  * @param <T> the upstream and downstream value type
- * @since 2.1.14 - experimental
+ * @since 2.2
  */
-@Experimental
 public final class ObservableThrottleLatest<T> extends AbstractObservableWithUpstream<T, T> {
 
     final long timeout;
@@ -54,8 +52,8 @@ public final class ObservableThrottleLatest<T> extends AbstractObservableWithUps
     }
 
     @Override
-    protected void subscribeActual(Observer<? super T> s) {
-        source.subscribe(new ThrottleLatestObserver<T>(s, timeout, unit, scheduler.createWorker(), emitLast));
+    protected void subscribeActual(Observer<? super T> observer) {
+        source.subscribe(new ThrottleLatestObserver<T>(observer, timeout, unit, scheduler.createWorker(), emitLast));
     }
 
     static final class ThrottleLatestObserver<T>
@@ -99,9 +97,9 @@ public final class ObservableThrottleLatest<T> extends AbstractObservableWithUps
         }
 
         @Override
-        public void onSubscribe(Disposable s) {
-            if (DisposableHelper.validate(upstream, s)) {
-                upstream = s;
+        public void onSubscribe(Disposable d) {
+            if (DisposableHelper.validate(upstream, d)) {
+                upstream = d;
                 downstream.onSubscribe(this);
             }
         }

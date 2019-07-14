@@ -16,7 +16,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
@@ -202,7 +201,7 @@ public class ObservableGroupJoinTest {
                     }
 
                     @Override
-                    public void onSubscribe(Disposable s) {
+                    public void onSubscribe(Disposable d) {
                     }
 
                 }

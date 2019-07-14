@@ -248,7 +248,8 @@ public class FlowableFlatMapSingleTest {
 
     @Test
     public void middleError() {
-        Flowable.fromArray(new String[]{"1","a","2"}).flatMapSingle(new Function<String, SingleSource<Integer>>() {
+        Flowable.fromArray(new String[]{"1", "a", "2"})
+        .flatMapSingle(new Function<String, SingleSource<Integer>>() {
             @Override
             public SingleSource<Integer> apply(final String s) throws NumberFormatException {
                 //return Single.just(Integer.valueOf(s)); //This works
@@ -331,10 +332,10 @@ public class FlowableFlatMapSingleTest {
         try {
             new Flowable<Integer>() {
                 @Override
-                protected void subscribeActual(Subscriber<? super Integer> observer) {
-                    observer.onSubscribe(new BooleanSubscription());
-                    observer.onError(new TestException("First"));
-                    observer.onError(new TestException("Second"));
+                protected void subscribeActual(Subscriber<? super Integer> subscriber) {
+                    subscriber.onSubscribe(new BooleanSubscription());
+                    subscriber.onError(new TestException("First"));
+                    subscriber.onError(new TestException("Second"));
                 }
             }
             .flatMapSingle(Functions.justFunction(Single.just(2)))

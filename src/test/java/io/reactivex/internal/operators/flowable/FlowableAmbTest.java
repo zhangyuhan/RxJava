@@ -19,8 +19,8 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 import org.mockito.InOrder;
@@ -30,6 +30,7 @@ import io.reactivex.*;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.exceptions.TestException;
 import io.reactivex.functions.*;
+import io.reactivex.internal.functions.Functions;
 import io.reactivex.internal.util.CrashingMappedIterable;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.processors.PublishProcessor;
@@ -102,21 +103,20 @@ public class FlowableAmbTest {
                 "3", "33", "333", "3333" }, 3000, null);
 
         @SuppressWarnings("unchecked")
-        Flowable<String> o = Flowable.ambArray(flowable1,
+        Flowable<String> f = Flowable.ambArray(flowable1,
                 flowable2, flowable3);
 
-        @SuppressWarnings("unchecked")
-        DefaultSubscriber<String> observer = mock(DefaultSubscriber.class);
-        o.subscribe(observer);
+        Subscriber<String> subscriber = TestHelper.mockSubscriber();
+        f.subscribe(subscriber);
 
         scheduler.advanceTimeBy(100000, TimeUnit.MILLISECONDS);
 
-        InOrder inOrder = inOrder(observer);
-        inOrder.verify(observer, times(1)).onNext("2");
-        inOrder.verify(observer, times(1)).onNext("22");
-        inOrder.verify(observer, times(1)).onNext("222");
-        inOrder.verify(observer, times(1)).onNext("2222");
-        inOrder.verify(observer, times(1)).onComplete();
+        InOrder inOrder = inOrder(subscriber);
+        inOrder.verify(subscriber, times(1)).onNext("2");
+        inOrder.verify(subscriber, times(1)).onNext("22");
+        inOrder.verify(subscriber, times(1)).onNext("222");
+        inOrder.verify(subscriber, times(1)).onNext("2222");
+        inOrder.verify(subscriber, times(1)).onComplete();
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -132,21 +132,20 @@ public class FlowableAmbTest {
                 3000, new IOException("fake exception"));
 
         @SuppressWarnings("unchecked")
-        Flowable<String> o = Flowable.ambArray(flowable1,
+        Flowable<String> f = Flowable.ambArray(flowable1,
                 flowable2, flowable3);
 
-        @SuppressWarnings("unchecked")
-        DefaultSubscriber<String> observer = mock(DefaultSubscriber.class);
-        o.subscribe(observer);
+        Subscriber<String> subscriber = TestHelper.mockSubscriber();
+        f.subscribe(subscriber);
 
         scheduler.advanceTimeBy(100000, TimeUnit.MILLISECONDS);
 
-        InOrder inOrder = inOrder(observer);
-        inOrder.verify(observer, times(1)).onNext("2");
-        inOrder.verify(observer, times(1)).onNext("22");
-        inOrder.verify(observer, times(1)).onNext("222");
-        inOrder.verify(observer, times(1)).onNext("2222");
-        inOrder.verify(observer, times(1)).onError(expectedException);
+        InOrder inOrder = inOrder(subscriber);
+        inOrder.verify(subscriber, times(1)).onNext("2");
+        inOrder.verify(subscriber, times(1)).onNext("22");
+        inOrder.verify(subscriber, times(1)).onNext("222");
+        inOrder.verify(subscriber, times(1)).onNext("2222");
+        inOrder.verify(subscriber, times(1)).onError(expectedException);
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -160,16 +159,15 @@ public class FlowableAmbTest {
                 "3" }, 3000, null);
 
         @SuppressWarnings("unchecked")
-        Flowable<String> o = Flowable.ambArray(flowable1,
+        Flowable<String> f = Flowable.ambArray(flowable1,
                 flowable2, flowable3);
 
-        @SuppressWarnings("unchecked")
-        DefaultSubscriber<String> observer = mock(DefaultSubscriber.class);
-        o.subscribe(observer);
+        Subscriber<String> subscriber = TestHelper.mockSubscriber();
+        f.subscribe(subscriber);
 
         scheduler.advanceTimeBy(100000, TimeUnit.MILLISECONDS);
-        InOrder inOrder = inOrder(observer);
-        inOrder.verify(observer, times(1)).onComplete();
+        InOrder inOrder = inOrder(subscriber);
+        inOrder.verify(subscriber, times(1)).onComplete();
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -180,7 +178,7 @@ public class FlowableAmbTest {
         ts.request(3);
         final AtomicLong requested1 = new AtomicLong();
         final AtomicLong requested2 = new AtomicLong();
-        Flowable<Integer> o1 = Flowable.unsafeCreate(new Publisher<Integer>() {
+        Flowable<Integer> f1 = Flowable.unsafeCreate(new Publisher<Integer>() {
 
             @Override
             public void subscribe(Subscriber<? super Integer> s) {
@@ -200,7 +198,7 @@ public class FlowableAmbTest {
             }
 
         });
-        Flowable<Integer> o2 = Flowable.unsafeCreate(new Publisher<Integer>() {
+        Flowable<Integer> f2 = Flowable.unsafeCreate(new Publisher<Integer>() {
 
             @Override
             public void subscribe(Subscriber<? super Integer> s) {
@@ -220,7 +218,7 @@ public class FlowableAmbTest {
             }
 
         });
-        Flowable.ambArray(o1, o2).subscribe(ts);
+        Flowable.ambArray(f1, f2).subscribe(ts);
         assertEquals(3, requested1.get());
         assertEquals(3, requested2.get());
     }
@@ -239,7 +237,6 @@ public class FlowableAmbTest {
         assertEquals(Flowable.bufferSize() * 2, ts.values().size());
     }
 
-
     @SuppressWarnings("unchecked")
     @Test
     public void testSubscriptionOnlyHappensOnce() throws InterruptedException {
@@ -252,13 +249,13 @@ public class FlowableAmbTest {
         };
 
         //this aync stream should emit first
-        Flowable<Integer> o1 = Flowable.just(1).doOnSubscribe(incrementer)
+        Flowable<Integer> f1 = Flowable.just(1).doOnSubscribe(incrementer)
                 .delay(100, TimeUnit.MILLISECONDS).subscribeOn(Schedulers.computation());
         //this stream emits second
-        Flowable<Integer> o2 = Flowable.just(1).doOnSubscribe(incrementer)
+        Flowable<Integer> f2 = Flowable.just(1).doOnSubscribe(incrementer)
                 .delay(100, TimeUnit.MILLISECONDS).subscribeOn(Schedulers.computation());
         TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
-        Flowable.ambArray(o1, o2).subscribe(ts);
+        Flowable.ambArray(f1, f2).subscribe(ts);
         ts.request(1);
         ts.awaitTerminalEvent(5, TimeUnit.SECONDS);
         ts.assertNoErrors();
@@ -269,14 +266,14 @@ public class FlowableAmbTest {
     @Test
     public void testSecondaryRequestsPropagatedToChildren() throws InterruptedException {
         //this aync stream should emit first
-        Flowable<Integer> o1 = Flowable.fromArray(1, 2, 3)
+        Flowable<Integer> f1 = Flowable.fromArray(1, 2, 3)
                 .delay(100, TimeUnit.MILLISECONDS).subscribeOn(Schedulers.computation());
         //this stream emits second
-        Flowable<Integer> o2 = Flowable.fromArray(4, 5, 6)
+        Flowable<Integer> f2 = Flowable.fromArray(4, 5, 6)
                 .delay(200, TimeUnit.MILLISECONDS).subscribeOn(Schedulers.computation());
         TestSubscriber<Integer> ts = new TestSubscriber<Integer>(1L);
 
-        Flowable.ambArray(o1, o2).subscribe(ts);
+        Flowable.ambArray(f1, f2).subscribe(ts);
         // before first emission request 20 more
         // this request should suffice to emit all
         ts.request(20);
@@ -716,5 +713,84 @@ public class FlowableAmbTest {
     public void ambArrayOrder() {
         Flowable<Integer> error = Flowable.error(new RuntimeException());
         Flowable.ambArray(Flowable.just(1), error).test().assertValue(1).assertComplete();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void noWinnerSuccessDispose() throws Exception {
+        for (int i = 0; i < TestHelper.RACE_LONG_LOOPS; i++) {
+            final AtomicBoolean interrupted = new AtomicBoolean();
+            final CountDownLatch cdl = new CountDownLatch(1);
+
+            Flowable.ambArray(
+                Flowable.just(1)
+                    .subscribeOn(Schedulers.single())
+                    .observeOn(Schedulers.computation()),
+                Flowable.never()
+            )
+            .subscribe(new Consumer<Object>() {
+                @Override
+                public void accept(Object v) throws Exception {
+                    interrupted.set(Thread.currentThread().isInterrupted());
+                    cdl.countDown();
+                }
+            });
+
+            assertTrue(cdl.await(500, TimeUnit.SECONDS));
+            assertFalse("Interrupted!", interrupted.get());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void noWinnerErrorDispose() throws Exception {
+        final TestException ex = new TestException();
+        for (int i = 0; i < TestHelper.RACE_LONG_LOOPS; i++) {
+            final AtomicBoolean interrupted = new AtomicBoolean();
+            final CountDownLatch cdl = new CountDownLatch(1);
+
+            Flowable.ambArray(
+                Flowable.error(ex)
+                    .subscribeOn(Schedulers.single())
+                    .observeOn(Schedulers.computation()),
+                Flowable.never()
+            )
+            .subscribe(Functions.emptyConsumer(), new Consumer<Throwable>() {
+                @Override
+                public void accept(Throwable e) throws Exception {
+                    interrupted.set(Thread.currentThread().isInterrupted());
+                    cdl.countDown();
+                }
+            });
+
+            assertTrue(cdl.await(500, TimeUnit.SECONDS));
+            assertFalse("Interrupted!", interrupted.get());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void noWinnerCompleteDispose() throws Exception {
+        for (int i = 0; i < TestHelper.RACE_LONG_LOOPS; i++) {
+            final AtomicBoolean interrupted = new AtomicBoolean();
+            final CountDownLatch cdl = new CountDownLatch(1);
+
+            Flowable.ambArray(
+                Flowable.empty()
+                    .subscribeOn(Schedulers.single())
+                    .observeOn(Schedulers.computation()),
+                Flowable.never()
+            )
+            .subscribe(Functions.emptyConsumer(), Functions.emptyConsumer(), new Action() {
+                @Override
+                public void run() throws Exception {
+                    interrupted.set(Thread.currentThread().isInterrupted());
+                    cdl.countDown();
+                }
+            });
+
+            assertTrue(cdl.await(500, TimeUnit.SECONDS));
+            assertFalse("Interrupted!", interrupted.get());
+        }
     }
 }

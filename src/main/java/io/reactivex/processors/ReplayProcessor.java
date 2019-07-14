@@ -433,9 +433,9 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
      * <p>
      * The method must be called sequentially, similar to the standard
      * {@code onXXX} methods.
-     * @since 2.1.11 - experimental
+     * <p>History: 2.1.11 - experimental
+     * @since 2.2
      */
-    @Experimental
     public void cleanupBuffer() {
         buffer.trimHead();
     }
@@ -589,7 +589,7 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
     static final class ReplaySubscription<T> extends AtomicInteger implements Subscription {
 
         private static final long serialVersionUID = 466549804534799122L;
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
         final ReplayProcessor<T> state;
 
         Object index;
@@ -601,10 +601,11 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
         long emitted;
 
         ReplaySubscription(Subscriber<? super T> actual, ReplayProcessor<T> state) {
-            this.actual = actual;
+            this.downstream = actual;
             this.state = state;
             this.requested = new AtomicLong();
         }
+
         @Override
         public void request(long n) {
             if (SubscriptionHelper.validate(n)) {
@@ -701,7 +702,7 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
 
             int missed = 1;
             final List<T> b = buffer;
-            final Subscriber<? super T> a = rs.actual;
+            final Subscriber<? super T> a = rs.downstream;
 
             Integer indexObject = (Integer)rs.index;
             int index;
@@ -940,7 +941,7 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
             }
 
             int missed = 1;
-            final Subscriber<? super T> a = rs.actual;
+            final Subscriber<? super T> a = rs.downstream;
 
             Node<T> index = (Node<T>)rs.index;
             if (index == null) {
@@ -1048,7 +1049,6 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
         Throwable error;
         volatile boolean done;
 
-
         SizeAndTimeBoundReplayBuffer(int maxSize, long maxAge, TimeUnit unit, Scheduler scheduler) {
             this.maxSize = ObjectHelper.verifyPositive(maxSize, "maxSize");
             this.maxAge = ObjectHelper.verifyPositive(maxAge, "maxAge");
@@ -1116,7 +1116,6 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
                 h = next;
             }
         }
-
 
         @Override
         public void trimHead() {
@@ -1227,7 +1226,7 @@ public final class ReplayProcessor<T> extends FlowableProcessor<T> {
             }
 
             int missed = 1;
-            final Subscriber<? super T> a = rs.actual;
+            final Subscriber<? super T> a = rs.downstream;
 
             TimedNode<T> index = (TimedNode<T>)rs.index;
             if (index == null) {

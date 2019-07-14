@@ -14,7 +14,6 @@
 package io.reactivex.subjects;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -282,6 +281,7 @@ public class BehaviorSubjectTest extends SubjectTest<Integer> {
             verify(o, never()).onError(any(Throwable.class));
         }
     }
+
     @Test
     public void testStartEmpty() {
         BehaviorSubject<Integer> source = BehaviorSubject.create();
@@ -304,9 +304,8 @@ public class BehaviorSubjectTest extends SubjectTest<Integer> {
         inOrder.verify(o).onNext(1);
         inOrder.verify(o).onComplete();
         inOrder.verifyNoMoreInteractions();
-
-
     }
+
     @Test
     public void testStartEmptyThenAddOne() {
         BehaviorSubject<Integer> source = BehaviorSubject.create();
@@ -329,6 +328,7 @@ public class BehaviorSubjectTest extends SubjectTest<Integer> {
         verify(o, never()).onError(any(Throwable.class));
 
     }
+
     @Test
     public void testStartEmptyCompleteWithOne() {
         BehaviorSubject<Integer> source = BehaviorSubject.create();
@@ -406,6 +406,7 @@ public class BehaviorSubjectTest extends SubjectTest<Integer> {
 //        // even though the onError above throws we should still receive it on the other subscriber
 //        assertEquals(1, to.getOnErrorEvents().size());
 //    }
+
     @Test
     public void testEmissionSubscriptionRace() throws Exception {
         Scheduler s = Schedulers.io();
@@ -550,6 +551,7 @@ public class BehaviorSubjectTest extends SubjectTest<Integer> {
         assertNull(as.getValue());
         assertNull(as.getThrowable());
     }
+
     @Test
     public void testCurrentStateMethodsError() {
         BehaviorSubject<Object> as = BehaviorSubject.create();
@@ -715,7 +717,6 @@ public class BehaviorSubjectTest extends SubjectTest<Integer> {
             }
         });
     }
-
 
     @Test
     public void completeSubscribeRace() throws Exception {

@@ -31,7 +31,7 @@ import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.schedulers.Timed;
 
-public final class ObservableReplay<T> extends ConnectableObservable<T> implements HasUpstreamObservableSource<T>, Disposable {
+public final class ObservableReplay<T> extends ConnectableObservable<T> implements HasUpstreamObservableSource<T>, ResettableConnectable {
     /** The source observable. */
     final ObservableSource<T> source;
     /** Holds the current subscriber that is, will be or just was subscribed to the source observable. */
@@ -159,15 +159,10 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
         return source;
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public void dispose() {
-        current.lazySet(null);
-    }
-
-    @Override
-    public boolean isDisposed() {
-        Disposable d = current.get();
-        return d == null || d.isDisposed();
+    public void resetIf(Disposable connectionObject) {
+        current.compareAndSet((ReplayObserver)connectionObject, null);
     }
 
     @Override
@@ -371,6 +366,7 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
                 replay();
             }
         }
+
         @Override
         public void onError(Throwable e) {
             // The observer front is accessed serially as required by spec so
@@ -383,6 +379,7 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
                 RxJavaPlugins.onError(e);
             }
         }
+
         @Override
         public void onComplete() {
             // The observer front is accessed serially as required by spec so
@@ -456,6 +453,8 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
                 cancelled = true;
                 // remove this from the parent
                 parent.remove(this);
+                // make sure the last known node is not retained
+                index = null;
             }
         }
         /**
@@ -511,6 +510,7 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
         UnboundedReplayBuffer(int capacityHint) {
             super(capacityHint);
         }
+
         @Override
         public void next(T value) {
             add(NotificationLite.next(value));
@@ -688,6 +688,7 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
 
                 for (;;) {
                     if (output.isDisposed()) {
+                        output.index = null;
                         return;
                     }
 
@@ -862,6 +863,7 @@ public final class ObservableReplay<T> extends ConnectableObservable<T> implemen
                 setFirst(prev);
             }
         }
+
         @Override
         void truncateFinal() {
             long timeLimit = scheduler.now(unit) - maxAge;

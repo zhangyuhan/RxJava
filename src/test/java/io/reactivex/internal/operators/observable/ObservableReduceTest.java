@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -144,7 +143,6 @@ public class ObservableReduceTest {
         Integer r = reduced.blockingFirst();
         assertEquals(21, r.intValue());
     }
-
 
     @Test
     public void testAggregateAsIntSum() {

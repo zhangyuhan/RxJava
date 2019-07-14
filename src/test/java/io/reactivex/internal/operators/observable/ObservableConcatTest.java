@@ -28,6 +28,7 @@ import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.disposables.*;
 import io.reactivex.exceptions.TestException;
+import io.reactivex.functions.Action;
 import io.reactivex.functions.Function;
 import io.reactivex.internal.functions.Functions;
 import io.reactivex.observers.*;
@@ -154,7 +155,6 @@ public class ObservableConcatTest {
         final AtomicReference<Thread> parent = new AtomicReference<Thread>();
         final CountDownLatch parentHasStarted = new CountDownLatch(1);
         final CountDownLatch parentHasFinished = new CountDownLatch(1);
-
 
         Observable<Observable<String>> observableOfObservables = Observable.unsafeCreate(new ObservableSource<Observable<String>>() {
 
@@ -471,7 +471,7 @@ public class ObservableConcatTest {
 
     static class TestObservable<T> implements ObservableSource<T> {
 
-        private final Disposable s = new Disposable() {
+        private final Disposable upstream = new Disposable() {
             @Override
             public void dispose() {
                     subscribed = false;
@@ -514,7 +514,7 @@ public class ObservableConcatTest {
 
         @Override
         public void subscribe(final Observer<? super T> observer) {
-            observer.onSubscribe(s);
+            observer.onSubscribe(upstream);
             t = new Thread(new Runnable() {
 
                 @Override
@@ -623,6 +623,7 @@ public class ObservableConcatTest {
         inOrder.verify(o).onSuccess(list);
         verify(o, never()).onError(any(Throwable.class));
     }
+
     @Test
     public void concatVeryLongObservableOfObservablesTakeHalf() {
         final int n = 10000;
@@ -663,11 +664,11 @@ public class ObservableConcatTest {
         Observable<String> o = Observable.unsafeCreate(new ObservableSource<String>() {
 
             @Override
-            public void subscribe(Observer<? super String> s) {
-                s.onSubscribe(Disposables.empty());
-                s.onNext("hello");
-                s.onComplete();
-                s.onComplete();
+            public void subscribe(Observer<? super String> observer) {
+                observer.onSubscribe(Disposables.empty());
+                observer.onNext("hello");
+                observer.onComplete();
+                observer.onComplete();
             }
 
         });
@@ -1154,5 +1155,43 @@ public class ObservableConcatTest {
         });
 
         assertTrue(disposable[0].isDisposed());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void noCancelPreviousArray() {
+        final AtomicInteger counter = new AtomicInteger();
+
+        Observable<Integer> source = Observable.just(1).doOnDispose(new Action() {
+            @Override
+            public void run() throws Exception {
+                counter.getAndIncrement();
+            }
+        });
+
+        Observable.concatArray(source, source, source, source, source)
+        .test()
+        .assertResult(1, 1, 1, 1, 1);
+
+        assertEquals(0, counter.get());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void noCancelPreviousIterable() {
+        final AtomicInteger counter = new AtomicInteger();
+
+        Observable<Integer> source = Observable.just(1).doOnDispose(new Action() {
+            @Override
+            public void run() throws Exception {
+                counter.getAndIncrement();
+            }
+        });
+
+        Observable.concat(Arrays.asList(source, source, source, source, source))
+        .test()
+        .assertResult(1, 1, 1, 1, 1);
+
+        assertEquals(0, counter.get());
     }
 }

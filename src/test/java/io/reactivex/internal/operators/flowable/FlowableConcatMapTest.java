@@ -13,9 +13,19 @@
 
 package io.reactivex.internal.operators.flowable;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.Test;
+import org.reactivestreams.Publisher;
+
+import io.reactivex.*;
+import io.reactivex.exceptions.*;
+import io.reactivex.functions.*;
 import io.reactivex.internal.operators.flowable.FlowableConcatMap.WeakScalarSubscription;
+import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subscribers.TestSubscriber;
 
 public class FlowableConcatMapTest {
@@ -39,4 +49,161 @@ public class FlowableConcatMapTest {
         ts.assertResult(1);
     }
 
+    @Test
+    public void boundaryFusion() {
+        Flowable.range(1, 10000)
+        .observeOn(Schedulers.single())
+        .map(new Function<Integer, String>() {
+            @Override
+            public String apply(Integer t) throws Exception {
+                String name = Thread.currentThread().getName();
+                if (name.contains("RxSingleScheduler")) {
+                    return "RxSingleScheduler";
+                }
+                return name;
+            }
+        })
+        .concatMap(new Function<String, Publisher<? extends Object>>() {
+            @Override
+            public Publisher<? extends Object> apply(String v)
+                    throws Exception {
+                return Flowable.just(v);
+            }
+        })
+        .observeOn(Schedulers.computation())
+        .distinct()
+        .test()
+        .awaitDone(5, TimeUnit.SECONDS)
+        .assertResult("RxSingleScheduler");
+    }
+
+    @Test
+    public void boundaryFusionDelayError() {
+        Flowable.range(1, 10000)
+        .observeOn(Schedulers.single())
+        .map(new Function<Integer, String>() {
+            @Override
+            public String apply(Integer t) throws Exception {
+                String name = Thread.currentThread().getName();
+                if (name.contains("RxSingleScheduler")) {
+                    return "RxSingleScheduler";
+                }
+                return name;
+            }
+        })
+        .concatMapDelayError(new Function<String, Publisher<? extends Object>>() {
+            @Override
+            public Publisher<? extends Object> apply(String v)
+                    throws Exception {
+                return Flowable.just(v);
+            }
+        })
+        .observeOn(Schedulers.computation())
+        .distinct()
+        .test()
+        .awaitDone(5, TimeUnit.SECONDS)
+        .assertResult("RxSingleScheduler");
+    }
+
+    @Test
+    public void pollThrows() {
+        Flowable.just(1)
+        .map(new Function<Integer, Integer>() {
+            @Override
+            public Integer apply(Integer v) throws Exception {
+                throw new TestException();
+            }
+        })
+        .compose(TestHelper.<Integer>flowableStripBoundary())
+        .concatMap(new Function<Integer, Publisher<Integer>>() {
+            @Override
+            public Publisher<Integer> apply(Integer v)
+                    throws Exception {
+                return Flowable.just(v);
+            }
+        })
+        .test()
+        .assertFailure(TestException.class);
+    }
+
+    @Test
+    public void pollThrowsDelayError() {
+        Flowable.just(1)
+        .map(new Function<Integer, Integer>() {
+            @Override
+            public Integer apply(Integer v) throws Exception {
+                throw new TestException();
+            }
+        })
+        .compose(TestHelper.<Integer>flowableStripBoundary())
+        .concatMapDelayError(new Function<Integer, Publisher<Integer>>() {
+            @Override
+            public Publisher<Integer> apply(Integer v)
+                    throws Exception {
+                return Flowable.just(v);
+            }
+        })
+        .test()
+        .assertFailure(TestException.class);
+    }
+
+    @Test
+    public void noCancelPrevious() {
+        final AtomicInteger counter = new AtomicInteger();
+
+        Flowable.range(1, 5)
+        .concatMap(new Function<Integer, Flowable<Integer>>() {
+            @Override
+            public Flowable<Integer> apply(Integer v) throws Exception {
+                return Flowable.just(v).doOnCancel(new Action() {
+                    @Override
+                    public void run() throws Exception {
+                        counter.getAndIncrement();
+                    }
+                });
+            }
+        })
+        .test()
+        .assertResult(1, 2, 3, 4, 5);
+
+        assertEquals(0, counter.get());
+    }
+
+    @Test
+    public void delayErrorCallableTillTheEnd() {
+        Flowable.just(1, 2, 3, 101, 102, 23, 890, 120, 32)
+        .concatMapDelayError(new Function<Integer, Flowable<Integer>>() {
+          @Override public Flowable<Integer> apply(final Integer integer) throws Exception {
+            return Flowable.fromCallable(new Callable<Integer>() {
+              @Override public Integer call() throws Exception {
+                if (integer >= 100) {
+                  throw new NullPointerException("test null exp");
+                }
+                return integer;
+              }
+            });
+          }
+        })
+        .test()
+        .assertFailure(CompositeException.class, 1, 2, 3, 23, 32);
+    }
+
+    @Test
+    public void delayErrorCallableEager() {
+        Flowable.just(1, 2, 3, 101, 102, 23, 890, 120, 32)
+        .concatMapDelayError(new Function<Integer, Flowable<Integer>>() {
+          @Override public Flowable<Integer> apply(final Integer integer) throws Exception {
+            return Flowable.fromCallable(new Callable<Integer>() {
+              @Override public Integer call() throws Exception {
+                if (integer >= 100) {
+                  throw new NullPointerException("test null exp");
+                }
+                return integer;
+              }
+            });
+          }
+        }, 2, false)
+        .test()
+        .assertFailure(NullPointerException.class, 1, 2, 3);
+    }
 }

@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -126,8 +125,7 @@ public class ObservableOnErrorResumeNextViaFunctionTest {
         };
         Observable<String> o = Observable.unsafeCreate(w).onErrorResumeNext(resume);
 
-        @SuppressWarnings("unchecked")
-        DefaultObserver<String> observer = mock(DefaultObserver.class);
+        Observer<String> observer = TestHelper.mockObserver();
         o.subscribe(observer);
 
         try {
@@ -192,8 +190,8 @@ public class ObservableOnErrorResumeNextViaFunctionTest {
                 return new Observer<Integer>() {
 
                     @Override
-                    public void onSubscribe(Disposable s) {
-                        t1.onSubscribe(s);
+                    public void onSubscribe(Disposable d) {
+                        t1.onSubscribe(d);
                     }
 
                     @Override
@@ -259,8 +257,7 @@ public class ObservableOnErrorResumeNextViaFunctionTest {
 
         });
 
-        @SuppressWarnings("unchecked")
-        DefaultObserver<String> observer = mock(DefaultObserver.class);
+        Observer<String> observer = TestHelper.mockObserver();
 
         TestObserver<String> to = new TestObserver<String>(observer);
         o.subscribe(to);

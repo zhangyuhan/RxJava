@@ -269,7 +269,7 @@ public class RxJavaPluginsTest {
                         fail("Should have thrown InvocationTargetException(IllegalStateException)");
                     } catch (InvocationTargetException ex) {
                         if (ex.getCause() instanceof IllegalStateException) {
-                            assertEquals("Plugins can't be changed anymore",ex.getCause().getMessage());
+                            assertEquals("Plugins can't be changed anymore", ex.getCause().getMessage());
                         } else {
                             fail("Should have thrown InvocationTargetException(IllegalStateException)");
                         }
@@ -708,12 +708,12 @@ public class RxJavaPluginsTest {
         try {
             RxJavaPlugins.setOnFlowableSubscribe(new BiFunction<Flowable, Subscriber, Subscriber>() {
                 @Override
-                public Subscriber apply(Flowable o, final Subscriber t) {
+                public Subscriber apply(Flowable f, final Subscriber t) {
                     return new Subscriber() {
 
                         @Override
-                        public void onSubscribe(Subscription d) {
-                            t.onSubscribe(d);
+                        public void onSubscribe(Subscription s) {
+                            t.onSubscribe(s);
                         }
 
                         @SuppressWarnings("unchecked")
@@ -1285,7 +1285,6 @@ public class RxJavaPluginsTest {
                 }
             };
 
-
             RxJavaPlugins.setInitComputationSchedulerHandler(callable2scheduler);
             RxJavaPlugins.setComputationSchedulerHandler(scheduler2scheduler);
             RxJavaPlugins.setIoSchedulerHandler(scheduler2scheduler);
@@ -1377,7 +1376,6 @@ public class RxJavaPluginsTest {
             };
 
             assertSame(myb, RxJavaPlugins.onAssembly(myb));
-
 
             Runnable action = Functions.EMPTY_RUNNABLE;
             assertSame(action, RxJavaPlugins.onSchedule(action));
@@ -1954,7 +1952,6 @@ public class RxJavaPluginsTest {
         }
     }
 
-
     @SuppressWarnings("rawtypes")
     @Test
     public void maybeCreate() {
@@ -2073,7 +2070,7 @@ public class RxJavaPluginsTest {
 
             Thread t = value.get();
             assertNotNull(t);
-            assertTrue(expectedThreadName.equals(t.getName()));
+            assertEquals(expectedThreadName, t.getName());
         } catch (Exception e) {
             fail();
         } finally {

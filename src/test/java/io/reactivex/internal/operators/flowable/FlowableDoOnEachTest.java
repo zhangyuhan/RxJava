@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.flowable;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -37,35 +36,35 @@ import io.reactivex.subscribers.*;
 
 public class FlowableDoOnEachTest {
 
-    Subscriber<String> subscribedObserver;
-    Subscriber<String> sideEffectObserver;
+    Subscriber<String> subscribedSubscriber;
+    Subscriber<String> sideEffectSubscriber;
 
     @Before
     public void before() {
-        subscribedObserver = TestHelper.mockSubscriber();
-        sideEffectObserver = TestHelper.mockSubscriber();
+        subscribedSubscriber = TestHelper.mockSubscriber();
+        sideEffectSubscriber = TestHelper.mockSubscriber();
     }
 
     @Test
     public void testDoOnEach() {
         Flowable<String> base = Flowable.just("a", "b", "c");
-        Flowable<String> doOnEach = base.doOnEach(sideEffectObserver);
+        Flowable<String> doOnEach = base.doOnEach(sideEffectSubscriber);
 
-        doOnEach.subscribe(subscribedObserver);
+        doOnEach.subscribe(subscribedSubscriber);
 
         // ensure the leaf observer is still getting called
-        verify(subscribedObserver, never()).onError(any(Throwable.class));
-        verify(subscribedObserver, times(1)).onNext("a");
-        verify(subscribedObserver, times(1)).onNext("b");
-        verify(subscribedObserver, times(1)).onNext("c");
-        verify(subscribedObserver, times(1)).onComplete();
+        verify(subscribedSubscriber, never()).onError(any(Throwable.class));
+        verify(subscribedSubscriber, times(1)).onNext("a");
+        verify(subscribedSubscriber, times(1)).onNext("b");
+        verify(subscribedSubscriber, times(1)).onNext("c");
+        verify(subscribedSubscriber, times(1)).onComplete();
 
         // ensure our injected observer is getting called
-        verify(sideEffectObserver, never()).onError(any(Throwable.class));
-        verify(sideEffectObserver, times(1)).onNext("a");
-        verify(sideEffectObserver, times(1)).onNext("b");
-        verify(sideEffectObserver, times(1)).onNext("c");
-        verify(sideEffectObserver, times(1)).onComplete();
+        verify(sideEffectSubscriber, never()).onError(any(Throwable.class));
+        verify(sideEffectSubscriber, times(1)).onNext("a");
+        verify(sideEffectSubscriber, times(1)).onNext("b");
+        verify(sideEffectSubscriber, times(1)).onNext("c");
+        verify(sideEffectSubscriber, times(1)).onComplete();
     }
 
     @Test
@@ -81,20 +80,20 @@ public class FlowableDoOnEachTest {
             }
         });
 
-        Flowable<String> doOnEach = errs.doOnEach(sideEffectObserver);
+        Flowable<String> doOnEach = errs.doOnEach(sideEffectSubscriber);
 
-        doOnEach.subscribe(subscribedObserver);
-        verify(subscribedObserver, times(1)).onNext("one");
-        verify(subscribedObserver, never()).onNext("two");
-        verify(subscribedObserver, never()).onNext("three");
-        verify(subscribedObserver, never()).onComplete();
-        verify(subscribedObserver, times(1)).onError(any(Throwable.class));
+        doOnEach.subscribe(subscribedSubscriber);
+        verify(subscribedSubscriber, times(1)).onNext("one");
+        verify(subscribedSubscriber, never()).onNext("two");
+        verify(subscribedSubscriber, never()).onNext("three");
+        verify(subscribedSubscriber, never()).onComplete();
+        verify(subscribedSubscriber, times(1)).onError(any(Throwable.class));
 
-        verify(sideEffectObserver, times(1)).onNext("one");
-        verify(sideEffectObserver, never()).onNext("two");
-        verify(sideEffectObserver, never()).onNext("three");
-        verify(sideEffectObserver, never()).onComplete();
-        verify(sideEffectObserver, times(1)).onError(any(Throwable.class));
+        verify(sideEffectSubscriber, times(1)).onNext("one");
+        verify(sideEffectSubscriber, never()).onNext("two");
+        verify(sideEffectSubscriber, never()).onNext("three");
+        verify(sideEffectSubscriber, never()).onComplete();
+        verify(sideEffectSubscriber, times(1)).onError(any(Throwable.class));
     }
 
     @Test
@@ -109,12 +108,12 @@ public class FlowableDoOnEachTest {
             }
         });
 
-        doOnEach.subscribe(subscribedObserver);
-        verify(subscribedObserver, times(1)).onNext("one");
-        verify(subscribedObserver, times(1)).onNext("two");
-        verify(subscribedObserver, never()).onNext("three");
-        verify(subscribedObserver, never()).onComplete();
-        verify(subscribedObserver, times(1)).onError(any(Throwable.class));
+        doOnEach.subscribe(subscribedSubscriber);
+        verify(subscribedSubscriber, times(1)).onNext("one");
+        verify(subscribedSubscriber, times(1)).onNext("two");
+        verify(subscribedSubscriber, never()).onNext("three");
+        verify(subscribedSubscriber, never()).onComplete();
+        verify(subscribedSubscriber, times(1)).onError(any(Throwable.class));
 
     }
 
@@ -180,7 +179,7 @@ public class FlowableDoOnEachTest {
 //                        public Flowable<?> apply(Integer integer) {
 //                            return Flowable.create(new Publisher<Object>() {
 //                                @Override
-//                                public void subscribe(Subscriber<Object> o) {
+//                                public void subscribe(Subscriber<Object> subscriber) {
 //                                    throw new NullPointerException("Test NPE");
 //                                }
 //                            });
@@ -728,8 +727,8 @@ public class FlowableDoOnEachTest {
     public void doubleOnSubscribe() {
         TestHelper.checkDoubleOnSubscribeFlowable(new Function<Flowable<Object>, Flowable<Object>>() {
             @Override
-            public Flowable<Object> apply(Flowable<Object> o) throws Exception {
-                return o.doOnEach(new TestSubscriber<Object>());
+            public Flowable<Object> apply(Flowable<Object> f) throws Exception {
+                return f.doOnEach(new TestSubscriber<Object>());
             }
         });
     }

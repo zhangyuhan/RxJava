@@ -11,13 +11,15 @@
  * the License for the specific language governing permissions and limitations under the License.
  */
 
-package io.reactivex;
+package io.reactivex.validators;
 
 import static org.junit.Assert.fail;
 
 import java.io.*;
 
 import org.junit.*;
+
+import io.reactivex.*;
 
 /**
  * Checks the source code of the base reactive types and locates missing
@@ -102,7 +104,6 @@ public class JavadocForAnnotations {
         }
     }
 
-
     static final void scanForBadMethod(StringBuilder sourceCode, String annotation, String inDoc,
             StringBuilder e, String baseClassName) {
         int index = 0;
@@ -127,8 +128,10 @@ public class JavadocForAnnotations {
                     if ((ll < 0 || ll > idx) && (lm < 0 || lm > idx)) {
 
                         int n = sourceCode.indexOf("{@code ", k);
+                        int endDD = sourceCode.indexOf("</dd>", k);
+                        // make sure the {@code is within the dt/dd section
 
-                        if (n < idx) {
+                        if (n < idx && n < endDD) {
                             int m = sourceCode.indexOf("}", n);
 
                             if (m < idx) {

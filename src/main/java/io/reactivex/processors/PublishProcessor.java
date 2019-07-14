@@ -141,7 +141,6 @@ public final class PublishProcessor<T> extends FlowableProcessor<T> {
         subscribers = new AtomicReference<PublishSubscription<T>[]>(EMPTY);
     }
 
-
     @Override
     protected void subscribeActual(Subscriber<? super T> t) {
         PublishSubscription<T> ps = new PublishSubscription<T>(t, this);
@@ -280,11 +279,11 @@ public final class PublishProcessor<T> extends FlowableProcessor<T> {
      * <p>
      * Calling with null will terminate the PublishProcessor and a NullPointerException
      * is signalled to the Subscribers.
+     * <p>History: 2.0.8 - experimental
      * @param t the item to emit, not null
      * @return true if the item was emitted to all Subscribers
-     * @since 2.0.8 - experimental
+     * @since 2.2
      */
-    @Experimental
     public boolean offer(T t) {
         if (t == null) {
             onError(new NullPointerException("onNext called with null. Null values are generally not allowed in 2.x operators and sources."));
@@ -338,7 +337,7 @@ public final class PublishProcessor<T> extends FlowableProcessor<T> {
 
         private static final long serialVersionUID = 3562861878281475070L;
         /** The actual subscriber. */
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
         /** The parent processor servicing this subscriber. */
         final PublishProcessor<T> parent;
 
@@ -348,7 +347,7 @@ public final class PublishProcessor<T> extends FlowableProcessor<T> {
          * @param parent the parent PublishProcessor
          */
         PublishSubscription(Subscriber<? super T> actual, PublishProcessor<T> parent) {
-            this.actual = actual;
+            this.downstream = actual;
             this.parent = parent;
         }
 
@@ -358,17 +357,17 @@ public final class PublishProcessor<T> extends FlowableProcessor<T> {
                 return;
             }
             if (r != 0L) {
-                actual.onNext(t);
+                downstream.onNext(t);
                 BackpressureHelper.producedCancel(this, 1);
             } else {
                 cancel();
-                actual.onError(new MissingBackpressureException("Could not emit value due to lack of requests"));
+                downstream.onError(new MissingBackpressureException("Could not emit value due to lack of requests"));
             }
         }
 
         public void onError(Throwable t) {
             if (get() != Long.MIN_VALUE) {
-                actual.onError(t);
+                downstream.onError(t);
             } else {
                 RxJavaPlugins.onError(t);
             }
@@ -376,7 +375,7 @@ public final class PublishProcessor<T> extends FlowableProcessor<T> {
 
         public void onComplete() {
             if (get() != Long.MIN_VALUE) {
-                actual.onComplete();
+                downstream.onComplete();
             }
         }
 

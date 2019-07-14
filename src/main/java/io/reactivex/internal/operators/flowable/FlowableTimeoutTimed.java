@@ -23,6 +23,8 @@ import io.reactivex.internal.disposables.SequentialDisposable;
 import io.reactivex.internal.subscriptions.*;
 import io.reactivex.plugins.RxJavaPlugins;
 
+import static io.reactivex.internal.util.ExceptionHelper.timeoutMessage;
+
 public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<T, T> {
     final long timeout;
     final TimeUnit unit;
@@ -58,7 +60,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
         private static final long serialVersionUID = 3764492702657003550L;
 
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
 
         final long timeout;
 
@@ -73,7 +75,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
         final AtomicLong requested;
 
         TimeoutSubscriber(Subscriber<? super T> actual, long timeout, TimeUnit unit, Scheduler.Worker worker) {
-            this.actual = actual;
+            this.downstream = actual;
             this.timeout = timeout;
             this.unit = unit;
             this.worker = worker;
@@ -96,7 +98,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
             task.get().dispose();
 
-            actual.onNext(t);
+            downstream.onNext(t);
 
             startTimeout(idx + 1);
         }
@@ -110,7 +112,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
             if (getAndSet(Long.MAX_VALUE) != Long.MAX_VALUE) {
                 task.dispose();
 
-                actual.onError(t);
+                downstream.onError(t);
 
                 worker.dispose();
             } else {
@@ -123,7 +125,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
             if (getAndSet(Long.MAX_VALUE) != Long.MAX_VALUE) {
                 task.dispose();
 
-                actual.onComplete();
+                downstream.onComplete();
 
                 worker.dispose();
             }
@@ -134,7 +136,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
             if (compareAndSet(idx, Long.MAX_VALUE)) {
                 SubscriptionHelper.cancel(upstream);
 
-                actual.onError(new TimeoutException());
+                downstream.onError(new TimeoutException(timeoutMessage(timeout, unit)));
 
                 worker.dispose();
             }
@@ -151,7 +153,6 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
             worker.dispose();
         }
     }
-
 
     static final class TimeoutTask implements Runnable {
 
@@ -175,7 +176,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
         private static final long serialVersionUID = 3764492702657003550L;
 
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
 
         final long timeout;
 
@@ -195,7 +196,8 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
         TimeoutFallbackSubscriber(Subscriber<? super T> actual, long timeout, TimeUnit unit,
                 Scheduler.Worker worker, Publisher<? extends T> fallback) {
-            this.actual = actual;
+            super(true);
+            this.downstream = actual;
             this.timeout = timeout;
             this.unit = unit;
             this.worker = worker;
@@ -223,7 +225,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
             consumed++;
 
-            actual.onNext(t);
+            downstream.onNext(t);
 
             startTimeout(idx + 1);
         }
@@ -237,7 +239,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
             if (index.getAndSet(Long.MAX_VALUE) != Long.MAX_VALUE) {
                 task.dispose();
 
-                actual.onError(t);
+                downstream.onError(t);
 
                 worker.dispose();
             } else {
@@ -250,7 +252,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
             if (index.getAndSet(Long.MAX_VALUE) != Long.MAX_VALUE) {
                 task.dispose();
 
-                actual.onComplete();
+                downstream.onComplete();
 
                 worker.dispose();
             }
@@ -269,7 +271,7 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
                 Publisher<? extends T> f = fallback;
                 fallback = null;
 
-                f.subscribe(new FallbackSubscriber<T>(actual, this));
+                f.subscribe(new FallbackSubscriber<T>(downstream, this));
 
                 worker.dispose();
             }
@@ -284,12 +286,12 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
     static final class FallbackSubscriber<T> implements FlowableSubscriber<T> {
 
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
 
         final SubscriptionArbiter arbiter;
 
         FallbackSubscriber(Subscriber<? super T> actual, SubscriptionArbiter arbiter) {
-            this.actual = actual;
+            this.downstream = actual;
             this.arbiter = arbiter;
         }
 
@@ -300,17 +302,17 @@ public final class FlowableTimeoutTimed<T> extends AbstractFlowableWithUpstream<
 
         @Override
         public void onNext(T t) {
-            actual.onNext(t);
+            downstream.onNext(t);
         }
 
         @Override
         public void onError(Throwable t) {
-            actual.onError(t);
+            downstream.onError(t);
         }
 
         @Override
         public void onComplete() {
-            actual.onComplete();
+            downstream.onComplete();
         }
     }
 

@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.flowable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
@@ -36,7 +35,7 @@ import io.reactivex.subscribers.TestSubscriber;
 public class FlowableFlatMapTest {
     @Test
     public void testNormal() {
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
         final List<Integer> list = Arrays.asList(1, 2, 3);
 
@@ -56,20 +55,20 @@ public class FlowableFlatMapTest {
 
         List<Integer> source = Arrays.asList(16, 32, 64);
 
-        Flowable.fromIterable(source).flatMapIterable(func, resFunc).subscribe(o);
+        Flowable.fromIterable(source).flatMapIterable(func, resFunc).subscribe(subscriber);
 
         for (Integer s : source) {
             for (Integer v : list) {
-                verify(o).onNext(s | v);
+                verify(subscriber).onNext(s | v);
             }
         }
-        verify(o).onComplete();
-        verify(o, never()).onError(any(Throwable.class));
+        verify(subscriber).onComplete();
+        verify(subscriber, never()).onError(any(Throwable.class));
     }
 
     @Test
     public void testCollectionFunctionThrows() {
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
         Function<Integer, List<Integer>> func = new Function<Integer, List<Integer>>() {
             @Override
@@ -87,16 +86,16 @@ public class FlowableFlatMapTest {
 
         List<Integer> source = Arrays.asList(16, 32, 64);
 
-        Flowable.fromIterable(source).flatMapIterable(func, resFunc).subscribe(o);
+        Flowable.fromIterable(source).flatMapIterable(func, resFunc).subscribe(subscriber);
 
-        verify(o, never()).onComplete();
-        verify(o, never()).onNext(any());
-        verify(o).onError(any(TestException.class));
+        verify(subscriber, never()).onComplete();
+        verify(subscriber, never()).onNext(any());
+        verify(subscriber).onError(any(TestException.class));
     }
 
     @Test
     public void testResultFunctionThrows() {
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
         final List<Integer> list = Arrays.asList(1, 2, 3);
 
@@ -116,16 +115,16 @@ public class FlowableFlatMapTest {
 
         List<Integer> source = Arrays.asList(16, 32, 64);
 
-        Flowable.fromIterable(source).flatMapIterable(func, resFunc).subscribe(o);
+        Flowable.fromIterable(source).flatMapIterable(func, resFunc).subscribe(subscriber);
 
-        verify(o, never()).onComplete();
-        verify(o, never()).onNext(any());
-        verify(o).onError(any(TestException.class));
+        verify(subscriber, never()).onComplete();
+        verify(subscriber, never()).onNext(any());
+        verify(subscriber).onError(any(TestException.class));
     }
 
     @Test
     public void testMergeError() {
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
         Function<Integer, Flowable<Integer>> func = new Function<Integer, Flowable<Integer>>() {
             @Override
@@ -143,11 +142,11 @@ public class FlowableFlatMapTest {
 
         List<Integer> source = Arrays.asList(16, 32, 64);
 
-        Flowable.fromIterable(source).flatMap(func, resFunc).subscribe(o);
+        Flowable.fromIterable(source).flatMap(func, resFunc).subscribe(subscriber);
 
-        verify(o, never()).onComplete();
-        verify(o, never()).onNext(any());
-        verify(o).onError(any(TestException.class));
+        verify(subscriber, never()).onComplete();
+        verify(subscriber, never()).onNext(any());
+        verify(subscriber).onError(any(TestException.class));
     }
 
     <T, R> Function<T, R> just(final R value) {
@@ -178,18 +177,18 @@ public class FlowableFlatMapTest {
 
         Flowable<Integer> source = Flowable.fromIterable(Arrays.asList(10, 20, 30));
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
-        source.flatMap(just(onNext), just(onError), just0(onComplete)).subscribe(o);
+        source.flatMap(just(onNext), just(onError), just0(onComplete)).subscribe(subscriber);
 
-        verify(o, times(3)).onNext(1);
-        verify(o, times(3)).onNext(2);
-        verify(o, times(3)).onNext(3);
-        verify(o).onNext(4);
-        verify(o).onComplete();
+        verify(subscriber, times(3)).onNext(1);
+        verify(subscriber, times(3)).onNext(2);
+        verify(subscriber, times(3)).onNext(3);
+        verify(subscriber).onNext(4);
+        verify(subscriber).onComplete();
 
-        verify(o, never()).onNext(5);
-        verify(o, never()).onError(any(Throwable.class));
+        verify(subscriber, never()).onNext(5);
+        verify(subscriber, never()).onError(any(Throwable.class));
     }
 
     @Test
@@ -203,19 +202,18 @@ public class FlowableFlatMapTest {
                 Flowable.<Integer> error(new RuntimeException("Forced failure!"))
                 );
 
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        source.flatMap(just(onNext), just(onError), just0(onComplete)).subscribe(subscriber);
 
-        source.flatMap(just(onNext), just(onError), just0(onComplete)).subscribe(o);
+        verify(subscriber, times(3)).onNext(1);
+        verify(subscriber, times(3)).onNext(2);
+        verify(subscriber, times(3)).onNext(3);
+        verify(subscriber).onNext(5);
+        verify(subscriber).onComplete();
+        verify(subscriber, never()).onNext(4);
 
-        verify(o, times(3)).onNext(1);
-        verify(o, times(3)).onNext(2);
-        verify(o, times(3)).onNext(3);
-        verify(o).onNext(5);
-        verify(o).onComplete();
-        verify(o, never()).onNext(4);
-
-        verify(o, never()).onError(any(Throwable.class));
+        verify(subscriber, never()).onError(any(Throwable.class));
     }
 
     <R> Callable<R> funcThrow0(R r) {
@@ -238,18 +236,25 @@ public class FlowableFlatMapTest {
 
     @Test
     public void testFlatMapTransformsOnNextFuncThrows() {
-        Flowable<Integer> onComplete = Flowable.fromIterable(Arrays.asList(4));
-        Flowable<Integer> onError = Flowable.fromIterable(Arrays.asList(5));
+        List<Throwable> errors = TestHelper.trackPluginErrors();
+        try {
+            Flowable<Integer> onComplete = Flowable.fromIterable(Arrays.asList(4));
+            Flowable<Integer> onError = Flowable.fromIterable(Arrays.asList(5));
 
-        Flowable<Integer> source = Flowable.fromIterable(Arrays.asList(10, 20, 30));
+            Flowable<Integer> source = Flowable.fromIterable(Arrays.asList(10, 20, 30));
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+            Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
-        source.flatMap(funcThrow(1, onError), just(onError), just0(onComplete)).subscribe(o);
+            source.flatMap(funcThrow(1, onError), just(onError), just0(onComplete)).subscribe(subscriber);
 
-        verify(o).onError(any(TestException.class));
-        verify(o, never()).onNext(any());
-        verify(o, never()).onComplete();
+            verify(subscriber).onError(any(TestException.class));
+            verify(subscriber, never()).onNext(any());
+            verify(subscriber, never()).onComplete();
+
+            TestHelper.assertUndeliverable(errors, 0, TestException.class);
+        } finally {
+            RxJavaPlugins.reset();
+        }
     }
 
     @Test
@@ -260,13 +265,13 @@ public class FlowableFlatMapTest {
 
         Flowable<Integer> source = Flowable.error(new TestException());
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
-        source.flatMap(just(onNext), funcThrow((Throwable) null, onError), just0(onComplete)).subscribe(o);
+        source.flatMap(just(onNext), funcThrow((Throwable) null, onError), just0(onComplete)).subscribe(subscriber);
 
-        verify(o).onError(any(CompositeException.class));
-        verify(o, never()).onNext(any());
-        verify(o, never()).onComplete();
+        verify(subscriber).onError(any(CompositeException.class));
+        verify(subscriber, never()).onNext(any());
+        verify(subscriber, never()).onComplete();
     }
 
     @Test
@@ -277,13 +282,13 @@ public class FlowableFlatMapTest {
 
         Flowable<Integer> source = Flowable.fromIterable(Arrays.<Integer> asList());
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
-        source.flatMap(just(onNext), just(onError), funcThrow0(onComplete)).subscribe(o);
+        source.flatMap(just(onNext), just(onError), funcThrow0(onComplete)).subscribe(subscriber);
 
-        verify(o).onError(any(TestException.class));
-        verify(o, never()).onNext(any());
-        verify(o, never()).onComplete();
+        verify(subscriber).onError(any(TestException.class));
+        verify(subscriber, never()).onNext(any());
+        verify(subscriber, never()).onComplete();
     }
 
     @Test
@@ -294,13 +299,13 @@ public class FlowableFlatMapTest {
 
         Flowable<Integer> source = Flowable.fromIterable(Arrays.asList(10, 20, 30));
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
 
-        source.flatMap(just(onNext), just(onError), funcThrow0(onComplete)).subscribe(o);
+        source.flatMap(just(onNext), just(onError), funcThrow0(onComplete)).subscribe(subscriber);
 
-        verify(o).onError(any(TestException.class));
-        verify(o, never()).onNext(any());
-        verify(o, never()).onComplete();
+        verify(subscriber).onError(any(TestException.class));
+        verify(subscriber, never()).onNext(any());
+        verify(subscriber, never()).onComplete();
     }
 
     private static <T> Flowable<T> composer(Flowable<T> source, final AtomicInteger subscriptionCount, final int m) {
@@ -348,6 +353,7 @@ public class FlowableFlatMapTest {
         Assert.assertEquals(expected.size(), ts.valueCount());
         Assert.assertTrue(expected.containsAll(ts.values()));
     }
+
     @Test
     public void testFlatMapSelectorMaxConcurrent() {
         final int m = 4;
@@ -411,8 +417,8 @@ public class FlowableFlatMapTest {
 
         Flowable<Integer> source = Flowable.fromIterable(Arrays.asList(10, 20, 30));
 
-        Subscriber<Object> o = TestHelper.mockSubscriber();
-        TestSubscriber<Object> ts = new TestSubscriber<Object>(o);
+        Subscriber<Object> subscriber = TestHelper.mockSubscriber();
+        TestSubscriber<Object> ts = new TestSubscriber<Object>(subscriber);
 
         Function<Integer, Flowable<Integer>> just = just(onNext);
         Function<Throwable, Flowable<Integer>> just2 = just(onError);
@@ -423,14 +429,14 @@ public class FlowableFlatMapTest {
         ts.assertNoErrors();
         ts.assertTerminated();
 
-        verify(o, times(3)).onNext(1);
-        verify(o, times(3)).onNext(2);
-        verify(o, times(3)).onNext(3);
-        verify(o).onNext(4);
-        verify(o).onComplete();
+        verify(subscriber, times(3)).onNext(1);
+        verify(subscriber, times(3)).onNext(2);
+        verify(subscriber, times(3)).onNext(3);
+        verify(subscriber).onNext(4);
+        verify(subscriber).onComplete();
 
-        verify(o, never()).onNext(5);
-        verify(o, never()).onError(any(Throwable.class));
+        verify(subscriber, never()).onNext(5);
+        verify(subscriber, never()).onError(any(Throwable.class));
     }
 
     @Ignore("Don't care for any reordering")
@@ -471,6 +477,7 @@ public class FlowableFlatMapTest {
             }
         }
     }
+
     @Test(timeout = 30000)
     public void flatMapRangeMixedAsyncLoop() {
         for (int i = 0; i < 2000; i++) {
@@ -514,7 +521,7 @@ public class FlowableFlatMapTest {
 
     @Test
     public void flatMapIntPassthruAsync() {
-        for (int i = 0;i < 1000; i++) {
+        for (int i = 0; i < 1000; i++) {
             TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
 
             Flowable.range(1, 1000).flatMap(new Function<Integer, Flowable<Integer>>() {
@@ -530,6 +537,7 @@ public class FlowableFlatMapTest {
             ts.assertValueCount(1000);
         }
     }
+
     @Test
     public void flatMapTwoNestedSync() {
         for (final int n : new int[] { 1, 1000, 1000000 }) {
@@ -849,7 +857,6 @@ public class FlowableFlatMapTest {
         }
     }
 
-
     @Test
     public void fusedInnerThrows() {
         Flowable.just(1).hide()
@@ -1075,5 +1082,45 @@ public class FlowableFlatMapTest {
         .assertFailure(TestException.class);
 
         assertEquals(1, counter.get());
+    }
+
+    @Test
+    public void maxConcurrencySustained() {
+        final PublishProcessor<Integer> pp1 = PublishProcessor.create();
+        final PublishProcessor<Integer> pp2 = PublishProcessor.create();
+        PublishProcessor<Integer> pp3 = PublishProcessor.create();
+        PublishProcessor<Integer> pp4 = PublishProcessor.create();
+
+        TestSubscriber<Integer> ts = Flowable.just(pp1, pp2, pp3, pp4)
+        .flatMap(new Function<PublishProcessor<Integer>, Flowable<Integer>>() {
+            @Override
+            public Flowable<Integer> apply(PublishProcessor<Integer> v) throws Exception {
+                return v;
+            }
+        }, 2)
+        .doOnNext(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer v) throws Exception {
+                if (v == 1) {
+                    // this will make sure the drain loop detects two completed
+                    // inner sources and replaces them with fresh ones
+                    pp1.onComplete();
+                    pp2.onComplete();
+                }
+            }
+        })
+        .test();
+
+        pp1.onNext(1);
+
+        assertFalse(pp1.hasSubscribers());
+        assertFalse(pp2.hasSubscribers());
+        assertTrue(pp3.hasSubscribers());
+        assertTrue(pp4.hasSubscribers());
+
+        ts.dispose();
+
+        assertFalse(pp3.hasSubscribers());
+        assertFalse(pp4.hasSubscribers());
     }
 }

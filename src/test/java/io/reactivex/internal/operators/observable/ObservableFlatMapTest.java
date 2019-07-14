@@ -14,7 +14,6 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.*;
@@ -26,14 +25,14 @@ import org.junit.*;
 import io.reactivex.*;
 import io.reactivex.Observable;
 import io.reactivex.Observer;
-import io.reactivex.disposables.Disposable;
+import io.reactivex.disposables.*;
 import io.reactivex.exceptions.*;
 import io.reactivex.functions.*;
 import io.reactivex.internal.functions.Functions;
 import io.reactivex.observers.TestObserver;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.schedulers.Schedulers;
-import io.reactivex.subjects.PublishSubject;
+import io.reactivex.subjects.*;
 
 public class ObservableFlatMapTest {
     @Test
@@ -205,7 +204,6 @@ public class ObservableFlatMapTest {
                 Observable.<Integer> error(new RuntimeException("Forced failure!"))
                 );
 
-
         Observer<Object> o = TestHelper.mockObserver();
 
         source.flatMap(just(onNext), just(onError), just0(onComplete)).subscribe(o);
@@ -308,7 +306,7 @@ public class ObservableFlatMapTest {
     private static <T> Observable<T> composer(Observable<T> source, final AtomicInteger subscriptionCount, final int m) {
         return source.doOnSubscribe(new Consumer<Disposable>() {
             @Override
-            public void accept(Disposable s) {
+            public void accept(Disposable d) {
                     int n = subscriptionCount.getAndIncrement();
                     if (n >= m) {
                         Assert.fail("Too many subscriptions! " + (n + 1));
@@ -350,6 +348,7 @@ public class ObservableFlatMapTest {
         Assert.assertEquals(expected.size(), to.valueCount());
         Assert.assertTrue(expected.containsAll(to.values()));
     }
+
     @Test
     public void testFlatMapSelectorMaxConcurrent() {
         final int m = 4;
@@ -471,6 +470,7 @@ public class ObservableFlatMapTest {
             }
         }
     }
+
     @Test(timeout = 30000)
     public void flatMapRangeMixedAsyncLoop() {
         for (int i = 0; i < 2000; i++) {
@@ -514,7 +514,7 @@ public class ObservableFlatMapTest {
 
     @Test
     public void flatMapIntPassthruAsync() {
-        for (int i = 0;i < 1000; i++) {
+        for (int i = 0; i < 1000; i++) {
             TestObserver<Integer> to = new TestObserver<Integer>();
 
             Observable.range(1, 1000).flatMap(new Function<Integer, Observable<Integer>>() {
@@ -530,6 +530,7 @@ public class ObservableFlatMapTest {
             to.assertValueCount(1000);
         }
     }
+
     @Test
     public void flatMapTwoNestedSync() {
         for (final int n : new int[] { 1, 1000, 1000000 }) {
@@ -895,7 +896,6 @@ public class ObservableFlatMapTest {
         .assertFailureAndMessage(NullPointerException.class, "The mapper returned a null ObservableSource");
     }
 
-
     @Test
     public void failingFusedInnerCancelsSource() {
         final AtomicInteger counter = new AtomicInteger();
@@ -1004,5 +1004,84 @@ public class ObservableFlatMapTest {
         ps.onNext(0);
 
         to.assertResult(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    }
+
+    @Test
+    public void fusedSourceCrashResumeWithNextSource() {
+        final UnicastSubject<Integer> fusedSource = UnicastSubject.create();
+        TestObserver<Integer> to = new TestObserver<Integer>();
+
+        ObservableFlatMap.MergeObserver<Integer, Integer> merger =
+                new ObservableFlatMap.MergeObserver<Integer, Integer>(to, new Function<Integer, Observable<Integer>>() {
+                    @Override
+                    public Observable<Integer> apply(Integer t)
+                            throws Exception {
+                        if (t == 0) {
+                            return fusedSource
+                                    .map(new Function<Integer, Integer>() {
+                                        @Override
+                                        public Integer apply(Integer v)
+                                                throws Exception { throw new TestException(); }
+                                    })
+                                    .compose(TestHelper.<Integer>observableStripBoundary());
+                        }
+                        return Observable.range(10 * t, 5);
+                    }
+                }, true, Integer.MAX_VALUE, 128);
+
+        merger.onSubscribe(Disposables.empty());
+        merger.getAndIncrement();
+
+        merger.onNext(0);
+        merger.onNext(1);
+        merger.onNext(2);
+
+        assertTrue(fusedSource.hasObservers());
+
+        fusedSource.onNext(-1);
+
+        merger.drainLoop();
+
+        to.assertValuesOnly(10, 11, 12, 13, 14, 20, 21, 22, 23, 24);
+    }
+
+    @Test
+    public void maxConcurrencySustained() {
+        final PublishSubject<Integer> ps1 = PublishSubject.create();
+        final PublishSubject<Integer> ps2 = PublishSubject.create();
+        PublishSubject<Integer> ps3 = PublishSubject.create();
+        PublishSubject<Integer> ps4 = PublishSubject.create();
+
+        TestObserver<Integer> to = Observable.just(ps1, ps2, ps3, ps4)
+        .flatMap(new Function<PublishSubject<Integer>, ObservableSource<Integer>>() {
+            @Override
+            public ObservableSource<Integer> apply(PublishSubject<Integer> v) throws Exception {
+                return v;
+            }
+        }, 2)
+        .doOnNext(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer v) throws Exception {
+                if (v == 1) {
+                    // this will make sure the drain loop detects two completed
+                    // inner sources and replaces them with fresh ones
+                    ps1.onComplete();
+                    ps2.onComplete();
+                }
+            }
+        })
+        .test();
+
+        ps1.onNext(1);
+
+        assertFalse(ps1.hasObservers());
+        assertFalse(ps2.hasObservers());
+        assertTrue(ps3.hasObservers());
+        assertTrue(ps4.hasObservers());
+
+        to.dispose();
+
+        assertFalse(ps3.hasObservers());
+        assertFalse(ps4.hasObservers());
     }
 }

@@ -14,12 +14,12 @@
 package io.reactivex.internal.operators.observable;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.lang.management.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 import org.mockito.InOrder;
@@ -506,7 +506,6 @@ public class ObservableReplayTest {
         }
     }
 
-
     /*
      * test the basic expectation of OperatorMulticast via replay
      */
@@ -521,7 +520,7 @@ public class ObservableReplayTest {
         Observer<Integer> spiedSubscriberAfterConnect = TestHelper.mockObserver();
 
         // Observable under test
-        Observable<Integer> source = Observable.just(1,2);
+        Observable<Integer> source = Observable.just(1, 2);
 
         ConnectableObservable<Integer> replay = source
                 .doOnNext(sourceNext)
@@ -644,7 +643,6 @@ public class ObservableReplayTest {
         verify(mockObserverBeforeConnect).onSubscribe((Disposable)any());
         verify(mockObserverAfterConnect).onSubscribe((Disposable)any());
 
-
         mockScheduler.advanceTimeBy(1, TimeUnit.SECONDS);
         // verify interactions
         verify(sourceNext, times(1)).accept(1);
@@ -680,7 +678,6 @@ public class ObservableReplayTest {
     public static Worker workerSpy(final Disposable mockDisposable) {
         return spy(new InprocessWorker(mockDisposable));
     }
-
 
     static class InprocessWorker extends Worker {
         private final Disposable mockDisposable;
@@ -941,11 +938,11 @@ public class ObservableReplayTest {
     @Test
     public void testUnsubscribeSource() throws Exception {
         Action unsubscribe = mock(Action.class);
-        Observable<Integer> o = Observable.just(1).doOnDispose(unsubscribe).cache();
+        Observable<Integer> o = Observable.just(1).doOnDispose(unsubscribe).replay().autoConnect();
         o.subscribe();
         o.subscribe();
         o.subscribe();
-        verify(unsubscribe, times(1)).run();
+        verify(unsubscribe, never()).run();
     }
 
     @Test
@@ -986,6 +983,7 @@ public class ObservableReplayTest {
             assertEquals(10000, to2.values().size());
         }
     }
+
     @Test
     public void testAsyncComeAndGo() {
         Observable<Long> source = Observable.interval(1, 1, TimeUnit.MILLISECONDS)
@@ -1051,7 +1049,6 @@ public class ObservableReplayTest {
         Observable<Integer> source = Observable.range(1, 10)
                 .concatWith(Observable.<Integer>error(new TestException()))
                 .replay().autoConnect();
-
 
         TestObserver<Integer> to = new TestObserver<Integer>();
         source.subscribe(to);
@@ -1497,8 +1494,8 @@ public class ObservableReplayTest {
 
         new Observable<Integer>() {
             @Override
-            protected void subscribeActual(Observer<? super Integer> s) {
-                sub[0] = s;
+            protected void subscribeActual(Observer<? super Integer> observer) {
+                sub[0] = observer;
             }
         }
         .replay()
@@ -1716,4 +1713,66 @@ public class ObservableReplayTest {
 
         assertSame(o, buf.get());
     }
-}
+
+    @Test
+    public void noBoundedRetentionViaThreadLocal() throws Exception {
+        Observable<byte[]> source = Observable.range(1, 200)
+        .map(new Function<Integer, byte[]>() {
+            @Override
+            public byte[] apply(Integer v) throws Exception {
+                return new byte[1024 * 1024];
+            }
+        })
+        .replay(new Function<Observable<byte[]>, Observable<byte[]>>() {
+            @Override
+            public Observable<byte[]> apply(final Observable<byte[]> o) throws Exception {
+                return o.take(1)
+                .concatMap(new Function<byte[], Observable<byte[]>>() {
+                    @Override
+                    public Observable<byte[]> apply(byte[] v) throws Exception {
+                        return o;
+                    }
+                });
+            }
+        }, 1)
+        .takeLast(1)
+        ;
+
+        System.out.println("Bounded Replay Leak check: Wait before GC");
+        Thread.sleep(1000);
+
+        System.out.println("Bounded Replay Leak check: GC");
+        System.gc();
+
+        Thread.sleep(500);
+
+        final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        MemoryUsage memHeap = memoryMXBean.getHeapMemoryUsage();
+        long initial = memHeap.getUsed();
+
+        System.out.printf("Bounded Replay Leak check: Starting: %.3f MB%n", initial / 1024.0 / 1024.0);
+
+        final AtomicLong after = new AtomicLong();
+
+        source.subscribe(new Consumer<byte[]>() {
+            @Override
+            public void accept(byte[] v) throws Exception {
+                System.out.println("Bounded Replay Leak check: Wait before GC 2");
+                Thread.sleep(1000);
+
+                System.out.println("Bounded Replay Leak check:  GC 2");
+                System.gc();
+
+                Thread.sleep(500);
+
+                after.set(memoryMXBean.getHeapMemoryUsage().getUsed());
+            }
+        });
+
+        System.out.printf("Bounded Replay Leak check: After: %.3f MB%n", after.get() / 1024.0 / 1024.0);
+
+        if (initial + 100 * 1024 * 1024 < after.get()) {
+            Assert.fail("Bounded Replay Leak check: Memory leak detected: " + (initial / 1024.0 / 1024.0)
+                    + " -> " + after.get() / 1024.0 / 1024.0);
+        }
+    }}

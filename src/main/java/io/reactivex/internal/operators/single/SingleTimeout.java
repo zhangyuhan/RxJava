@@ -21,6 +21,8 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.internal.disposables.DisposableHelper;
 import io.reactivex.plugins.RxJavaPlugins;
 
+import static io.reactivex.internal.util.ExceptionHelper.timeoutMessage;
+
 public final class SingleTimeout<T> extends Single<T> {
 
     final SingleSource<T> source;
@@ -43,10 +45,10 @@ public final class SingleTimeout<T> extends Single<T> {
     }
 
     @Override
-    protected void subscribeActual(final SingleObserver<? super T> s) {
+    protected void subscribeActual(final SingleObserver<? super T> observer) {
 
-        TimeoutMainObserver<T> parent = new TimeoutMainObserver<T>(s, other);
-        s.onSubscribe(parent);
+        TimeoutMainObserver<T> parent = new TimeoutMainObserver<T>(observer, other, timeout, unit);
+        observer.onSubscribe(parent);
 
         DisposableHelper.replace(parent.task, scheduler.scheduleDirect(parent, timeout, unit));
 
@@ -58,7 +60,7 @@ public final class SingleTimeout<T> extends Single<T> {
 
         private static final long serialVersionUID = 37497744973048446L;
 
-        final SingleObserver<? super T> actual;
+        final SingleObserver<? super T> downstream;
 
         final AtomicReference<Disposable> task;
 
@@ -66,14 +68,18 @@ public final class SingleTimeout<T> extends Single<T> {
 
         SingleSource<? extends T> other;
 
+        final long timeout;
+
+        final TimeUnit unit;
+
         static final class TimeoutFallbackObserver<T> extends AtomicReference<Disposable>
         implements SingleObserver<T> {
 
             private static final long serialVersionUID = 2071387740092105509L;
-            final SingleObserver<? super T> actual;
+            final SingleObserver<? super T> downstream;
 
-            TimeoutFallbackObserver(SingleObserver<? super T> actual) {
-                this.actual = actual;
+            TimeoutFallbackObserver(SingleObserver<? super T> downstream) {
+                this.downstream = downstream;
             }
 
             @Override
@@ -83,18 +89,20 @@ public final class SingleTimeout<T> extends Single<T> {
 
             @Override
             public void onSuccess(T t) {
-                actual.onSuccess(t);
+                downstream.onSuccess(t);
             }
 
             @Override
             public void onError(Throwable e) {
-                actual.onError(e);
+                downstream.onError(e);
             }
         }
 
-        TimeoutMainObserver(SingleObserver<? super T> actual, SingleSource<? extends T> other) {
-            this.actual = actual;
+        TimeoutMainObserver(SingleObserver<? super T> actual, SingleSource<? extends T> other, long timeout, TimeUnit unit) {
+            this.downstream = actual;
             this.other = other;
+            this.timeout = timeout;
+            this.unit = unit;
             this.task = new AtomicReference<Disposable>();
             if (other != null) {
                 this.fallback = new TimeoutFallbackObserver<T>(actual);
@@ -112,7 +120,7 @@ public final class SingleTimeout<T> extends Single<T> {
                 }
                 SingleSource<? extends T> other = this.other;
                 if (other == null) {
-                    actual.onError(new TimeoutException());
+                    downstream.onError(new TimeoutException(timeoutMessage(timeout, unit)));
                 } else {
                     this.other = null;
                     other.subscribe(fallback);
@@ -130,7 +138,7 @@ public final class SingleTimeout<T> extends Single<T> {
             Disposable d = get();
             if (d != DisposableHelper.DISPOSED && compareAndSet(d, DisposableHelper.DISPOSED)) {
                 DisposableHelper.dispose(task);
-                actual.onSuccess(t);
+                downstream.onSuccess(t);
             }
         }
 
@@ -139,7 +147,7 @@ public final class SingleTimeout<T> extends Single<T> {
             Disposable d = get();
             if (d != DisposableHelper.DISPOSED && compareAndSet(d, DisposableHelper.DISPOSED)) {
                 DisposableHelper.dispose(task);
-                actual.onError(e);
+                downstream.onError(e);
             } else {
                 RxJavaPlugins.onError(e);
             }

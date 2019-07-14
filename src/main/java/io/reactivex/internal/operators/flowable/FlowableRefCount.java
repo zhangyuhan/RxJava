@@ -25,7 +25,6 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.internal.disposables.*;
 import io.reactivex.internal.subscriptions.SubscriptionHelper;
 import io.reactivex.plugins.RxJavaPlugins;
-import io.reactivex.schedulers.Schedulers;
 
 /**
  * Returns an observable sequence that stays connected to the source as long as
@@ -49,7 +48,7 @@ public final class FlowableRefCount<T> extends Flowable<T> {
     RefConnection connection;
 
     public FlowableRefCount(ConnectableFlowable<T> source) {
-        this(source, 1, 0L, TimeUnit.NANOSECONDS, Schedulers.trampoline());
+        this(source, 1, 0L, TimeUnit.NANOSECONDS, null);
     }
 
     public FlowableRefCount(ConnectableFlowable<T> source, int n, long timeout, TimeUnit unit,
@@ -95,7 +94,7 @@ public final class FlowableRefCount<T> extends Flowable<T> {
     void cancel(RefConnection rc) {
         SequentialDisposable sd;
         synchronized (this) {
-            if (connection == null) {
+            if (connection == null || connection != rc) {
                 return;
             }
             long c = rc.subscriberCount - 1;
@@ -114,16 +113,19 @@ public final class FlowableRefCount<T> extends Flowable<T> {
         sd.replace(scheduler.scheduleDirect(rc, timeout, unit));
     }
 
-
     void terminated(RefConnection rc) {
         synchronized (this) {
-            if (connection != null) {
+            if (connection != null && connection == rc) {
                 connection = null;
                 if (rc.timer != null) {
                     rc.timer.dispose();
                 }
+            }
+            if (--rc.subscriberCount == 0) {
                 if (source instanceof Disposable) {
                     ((Disposable)source).dispose();
+                } else if (source instanceof ResettableConnectable) {
+                    ((ResettableConnectable)source).resetIf(rc.get());
                 }
             }
         }
@@ -133,9 +135,16 @@ public final class FlowableRefCount<T> extends Flowable<T> {
         synchronized (this) {
             if (rc.subscriberCount == 0 && rc == connection) {
                 connection = null;
+                Disposable connectionObject = rc.get();
                 DisposableHelper.dispose(rc);
                 if (source instanceof Disposable) {
                     ((Disposable)source).dispose();
+                } else if (source instanceof ResettableConnectable) {
+                    if (connectionObject == null) {
+                        rc.disconnectedEarly = true;
+                    } else {
+                        ((ResettableConnectable)source).resetIf(connectionObject);
+                    }
                 }
             }
         }
@@ -154,6 +163,8 @@ public final class FlowableRefCount<T> extends Flowable<T> {
 
         boolean connected;
 
+        boolean disconnectedEarly;
+
         RefConnection(FlowableRefCount<?> parent) {
             this.parent = parent;
         }
@@ -166,6 +177,11 @@ public final class FlowableRefCount<T> extends Flowable<T> {
         @Override
         public void accept(Disposable t) throws Exception {
             DisposableHelper.replace(this, t);
+            synchronized (parent) {
+                if (disconnectedEarly) {
+                    ((ResettableConnectable)parent.source).resetIf(t);
+                }
+            }
         }
     }
 
@@ -174,7 +190,7 @@ public final class FlowableRefCount<T> extends Flowable<T> {
 
         private static final long serialVersionUID = -7419642935409022375L;
 
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
 
         final FlowableRefCount<T> parent;
 
@@ -183,21 +199,21 @@ public final class FlowableRefCount<T> extends Flowable<T> {
         Subscription upstream;
 
         RefCountSubscriber(Subscriber<? super T> actual, FlowableRefCount<T> parent, RefConnection connection) {
-            this.actual = actual;
+            this.downstream = actual;
             this.parent = parent;
             this.connection = connection;
         }
 
         @Override
         public void onNext(T t) {
-            actual.onNext(t);
+            downstream.onNext(t);
         }
 
         @Override
         public void onError(Throwable t) {
             if (compareAndSet(false, true)) {
                 parent.terminated(connection);
-                actual.onError(t);
+                downstream.onError(t);
             } else {
                 RxJavaPlugins.onError(t);
             }
@@ -207,7 +223,7 @@ public final class FlowableRefCount<T> extends Flowable<T> {
         public void onComplete() {
             if (compareAndSet(false, true)) {
                 parent.terminated(connection);
-                actual.onComplete();
+                downstream.onComplete();
             }
         }
 
@@ -229,7 +245,7 @@ public final class FlowableRefCount<T> extends Flowable<T> {
             if (SubscriptionHelper.validate(upstream, s)) {
                 this.upstream = s;
 
-                actual.onSubscribe(this);
+                downstream.onSubscribe(this);
             }
         }
     }

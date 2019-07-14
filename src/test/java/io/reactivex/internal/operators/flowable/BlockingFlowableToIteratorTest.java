@@ -33,16 +33,16 @@ public class BlockingFlowableToIteratorTest {
 
         Iterator<String> it = obs.blockingIterable().iterator();
 
-        assertEquals(true, it.hasNext());
+        assertTrue(it.hasNext());
         assertEquals("one", it.next());
 
-        assertEquals(true, it.hasNext());
+        assertTrue(it.hasNext());
         assertEquals("two", it.next());
 
-        assertEquals(true, it.hasNext());
+        assertTrue(it.hasNext());
         assertEquals("three", it.next());
 
-        assertEquals(false, it.hasNext());
+        assertFalse(it.hasNext());
 
     }
 
@@ -51,19 +51,19 @@ public class BlockingFlowableToIteratorTest {
         Flowable<String> obs = Flowable.unsafeCreate(new Publisher<String>() {
 
             @Override
-            public void subscribe(Subscriber<? super String> observer) {
-                observer.onSubscribe(new BooleanSubscription());
-                observer.onNext("one");
-                observer.onError(new TestException());
+            public void subscribe(Subscriber<? super String> subscriber) {
+                subscriber.onSubscribe(new BooleanSubscription());
+                subscriber.onNext("one");
+                subscriber.onError(new TestException());
             }
         });
 
         Iterator<String> it = obs.blockingIterable().iterator();
 
-        assertEquals(true, it.hasNext());
+        assertTrue(it.hasNext());
         assertEquals("one", it.next());
 
-        assertEquals(true, it.hasNext());
+        assertTrue(it.hasNext());
         it.next();
     }
 

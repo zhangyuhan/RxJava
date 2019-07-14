@@ -46,69 +46,68 @@ public class TestSubscriberTest {
     @Test
     public void testAssert() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2));
-        TestSubscriber<Integer> o = new TestSubscriber<Integer>();
-        oi.subscribe(o);
+        TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
+        oi.subscribe(ts);
 
-        o.assertValues(1, 2);
-        o.assertValueCount(2);
-        o.assertTerminated();
+        ts.assertValues(1, 2);
+        ts.assertValueCount(2);
+        ts.assertTerminated();
     }
 
     @Test
     public void testAssertNotMatchCount() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2));
-        TestSubscriber<Integer> o = new TestSubscriber<Integer>();
-        oi.subscribe(o);
+        TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
+        oi.subscribe(ts);
 
         thrown.expect(AssertionError.class);
         // FIXME different message pattern
         // thrown.expectMessage("Number of items does not match. Provided: 1  Actual: 2");
 
-        o.assertValues(1);
-        o.assertValueCount(2);
-        o.assertTerminated();
+        ts.assertValues(1);
+        ts.assertValueCount(2);
+        ts.assertTerminated();
     }
 
     @Test
     public void testAssertNotMatchValue() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2));
-        TestSubscriber<Integer> o = new TestSubscriber<Integer>();
-        oi.subscribe(o);
+        TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
+        oi.subscribe(ts);
 
         thrown.expect(AssertionError.class);
         // FIXME different message pattern
         // thrown.expectMessage("Value at index: 1 expected to be [3] (Integer) but was: [2] (Integer)");
 
-
-        o.assertValues(1, 3);
-        o.assertValueCount(2);
-        o.assertTerminated();
+        ts.assertValues(1, 3);
+        ts.assertValueCount(2);
+        ts.assertTerminated();
     }
 
     @Test
     public void assertNeverAtNotMatchingValue() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2));
-        TestSubscriber<Integer> o = new TestSubscriber<Integer>();
-        oi.subscribe(o);
+        TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
+        oi.subscribe(ts);
 
-        o.assertNever(3);
-        o.assertValueCount(2);
-        o.assertTerminated();
+        ts.assertNever(3);
+        ts.assertValueCount(2);
+        ts.assertTerminated();
     }
 
     @Test
     public void assertNeverAtMatchingValue() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2));
-        TestSubscriber<Integer> o = new TestSubscriber<Integer>();
-        oi.subscribe(o);
+        TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
+        oi.subscribe(ts);
 
-        o.assertValues(1, 2);
+        ts.assertValues(1, 2);
 
         thrown.expect(AssertionError.class);
 
-        o.assertNever(2);
-        o.assertValueCount(2);
-        o.assertTerminated();
+        ts.assertNever(2);
+        ts.assertValueCount(2);
+        ts.assertTerminated();
     }
 
     @Test
@@ -146,8 +145,8 @@ public class TestSubscriberTest {
     @Test
     public void testAssertTerminalEventNotReceived() {
         PublishProcessor<Integer> p = PublishProcessor.create();
-        TestSubscriber<Integer> o = new TestSubscriber<Integer>();
-        p.subscribe(o);
+        TestSubscriber<Integer> ts = new TestSubscriber<Integer>();
+        p.subscribe(ts);
 
         p.onNext(1);
         p.onNext(2);
@@ -156,35 +155,35 @@ public class TestSubscriberTest {
         // FIXME different message pattern
         // thrown.expectMessage("No terminal events received.");
 
-        o.assertValues(1, 2);
-        o.assertValueCount(2);
-        o.assertTerminated();
+        ts.assertValues(1, 2);
+        ts.assertValueCount(2);
+        ts.assertTerminated();
     }
 
     @Test
     public void testWrappingMock() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2));
-        Subscriber<Integer> mockObserver = TestHelper.mockSubscriber();
+        Subscriber<Integer> mockSubscriber = TestHelper.mockSubscriber();
 
-        oi.subscribe(new TestSubscriber<Integer>(mockObserver));
+        oi.subscribe(new TestSubscriber<Integer>(mockSubscriber));
 
-        InOrder inOrder = inOrder(mockObserver);
-        inOrder.verify(mockObserver, times(1)).onNext(1);
-        inOrder.verify(mockObserver, times(1)).onNext(2);
-        inOrder.verify(mockObserver, times(1)).onComplete();
+        InOrder inOrder = inOrder(mockSubscriber);
+        inOrder.verify(mockSubscriber, times(1)).onNext(1);
+        inOrder.verify(mockSubscriber, times(1)).onNext(2);
+        inOrder.verify(mockSubscriber, times(1)).onComplete();
         inOrder.verifyNoMoreInteractions();
     }
 
     @Test
     public void testWrappingMockWhenUnsubscribeInvolved() {
         Flowable<Integer> oi = Flowable.fromIterable(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9)).take(2);
-        Subscriber<Integer> mockObserver = TestHelper.mockSubscriber();
-        oi.subscribe(new TestSubscriber<Integer>(mockObserver));
+        Subscriber<Integer> mockSubscriber = TestHelper.mockSubscriber();
+        oi.subscribe(new TestSubscriber<Integer>(mockSubscriber));
 
-        InOrder inOrder = inOrder(mockObserver);
-        inOrder.verify(mockObserver, times(1)).onNext(1);
-        inOrder.verify(mockObserver, times(1)).onNext(2);
-        inOrder.verify(mockObserver, times(1)).onComplete();
+        InOrder inOrder = inOrder(mockSubscriber);
+        inOrder.verify(mockSubscriber, times(1)).onNext(1);
+        inOrder.verify(mockSubscriber, times(1)).onNext(2);
+        inOrder.verify(mockSubscriber, times(1)).onComplete();
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -746,7 +745,6 @@ public class TestSubscriberTest {
         ts.awaitTerminalEvent();
     }
 
-
     @Test
     public void createDelegate() {
         TestSubscriber<Integer> ts1 = TestSubscriber.create();
@@ -929,8 +927,6 @@ public class TestSubscriberTest {
         ts.assertValueCount(0);
 
         ts.assertNoValues();
-
-
     }
 
     @Test
@@ -1341,7 +1337,6 @@ public class TestSubscriberTest {
             // expected
         }
 
-
         ts = TestSubscriber.create();
 
         ts.onSubscribe(new BooleanSubscription());
@@ -1369,22 +1364,22 @@ public class TestSubscriberTest {
 
         ts.onSubscribe(new BooleanSubscription());
 
-        BooleanSubscription d1 = new BooleanSubscription();
+        BooleanSubscription bs1 = new BooleanSubscription();
 
-        ts.onSubscribe(d1);
+        ts.onSubscribe(bs1);
 
-        assertTrue(d1.isCancelled());
+        assertTrue(bs1.isCancelled());
 
         ts.assertError(IllegalStateException.class);
 
         ts = TestSubscriber.create();
         ts.dispose();
 
-        d1 = new BooleanSubscription();
+        bs1 = new BooleanSubscription();
 
-        ts.onSubscribe(d1);
+        ts.onSubscribe(bs1);
 
-        assertTrue(d1.isCancelled());
+        assertTrue(bs1.isCancelled());
 
     }
 
@@ -1544,7 +1539,7 @@ public class TestSubscriberTest {
         TestSubscriber<Integer> ts = new TestSubscriber<Integer>(new FlowableSubscriber<Integer>() {
 
             @Override
-            public void onSubscribe(Subscription d) {
+            public void onSubscribe(Subscription s) {
 
             }
 
@@ -1580,7 +1575,7 @@ public class TestSubscriberTest {
         TestSubscriber<Integer> ts = new TestSubscriber<Integer>(new FlowableSubscriber<Integer>() {
 
             @Override
-            public void onSubscribe(Subscription d) {
+            public void onSubscribe(Subscription s) {
 
             }
 
@@ -1610,7 +1605,6 @@ public class TestSubscriberTest {
             assertTrue(ts.isTerminated());
         }
     }
-
 
     @Test
     public void syncQueueThrows() {
@@ -1825,7 +1819,6 @@ public class TestSubscriberTest {
             assertTrue(ex.toString(), ex.toString().contains("timeout!"));
         }
     }
-
 
     @Test
     public void timeoutIndicated3() throws InterruptedException {
@@ -2188,5 +2181,39 @@ public class TestSubscriberTest {
     public void awaitCount0() {
         TestSubscriber<Integer> ts = TestSubscriber.create();
         ts.awaitCount(0, TestWaitStrategy.SLEEP_1MS, 0);
+    }
+
+    @Test
+    public void assertValueSetWiderSet() {
+        Set<Integer> set = new HashSet<Integer>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7));
+
+        Flowable.just(4, 5, 1, 3, 2)
+        .test()
+        .assertValueSet(set);
+    }
+
+    @Test
+    public void assertValueSetExact() {
+        Set<Integer> set = new HashSet<Integer>(Arrays.asList(1, 2, 3, 4, 5));
+
+        Flowable.just(4, 5, 1, 3, 2)
+        .test()
+        .assertValueSet(set)
+        .assertValueCount(set.size());
+    }
+
+    @Test
+    public void assertValueSetMissing() {
+        Set<Integer> set = new HashSet<Integer>(Arrays.asList(0, 1, 2, 4, 5, 6, 7));
+
+        try {
+            Flowable.range(1, 5)
+            .test()
+            .assertValueSet(set);
+
+            throw new RuntimeException("Should have failed");
+        } catch (AssertionError ex) {
+            assertTrue(ex.getMessage(), ex.getMessage().contains("Value not in the expected collection: " + 3));
+        }
     }
 }

@@ -315,11 +315,11 @@ public final class BehaviorProcessor<T> extends FlowableProcessor<T> {
      * <p>
      * Calling with null will terminate the PublishProcessor and a NullPointerException
      * is signalled to the Subscribers.
+     * <p>History: 2.0.8 - experimental
      * @param t the item to emit, not null
      * @return true if the item was emitted to all Subscribers
-     * @since 2.0.8 - experimental
+     * @since 2.2
      */
-    @Experimental
     public boolean offer(T t) {
         if (t == null) {
             onError(new NullPointerException("onNext called with null. Null values are generally not allowed in 2.x operators and sources."));
@@ -345,7 +345,6 @@ public final class BehaviorProcessor<T> extends FlowableProcessor<T> {
     public boolean hasSubscribers() {
         return subscribers.get().length != 0;
     }
-
 
     /* test support*/ int subscriberCount() {
         return subscribers.get().length;
@@ -447,7 +446,6 @@ public final class BehaviorProcessor<T> extends FlowableProcessor<T> {
         return o != null && !NotificationLite.isComplete(o) && !NotificationLite.isError(o);
     }
 
-
     boolean add(BehaviorSubscription<T> rs) {
         for (;;) {
             BehaviorSubscription<T>[] a = subscribers.get();
@@ -525,7 +523,7 @@ public final class BehaviorProcessor<T> extends FlowableProcessor<T> {
 
         private static final long serialVersionUID = 3293175281126227086L;
 
-        final Subscriber<? super T> actual;
+        final Subscriber<? super T> downstream;
         final BehaviorProcessor<T> state;
 
         boolean next;
@@ -539,7 +537,7 @@ public final class BehaviorProcessor<T> extends FlowableProcessor<T> {
         long index;
 
         BehaviorSubscription(Subscriber<? super T> actual, BehaviorProcessor<T> state) {
-            this.actual = actual;
+            this.downstream = actual;
             this.state = state;
         }
 
@@ -629,24 +627,24 @@ public final class BehaviorProcessor<T> extends FlowableProcessor<T> {
             }
 
             if (NotificationLite.isComplete(o)) {
-                actual.onComplete();
+                downstream.onComplete();
                 return true;
             } else
             if (NotificationLite.isError(o)) {
-                actual.onError(NotificationLite.getError(o));
+                downstream.onError(NotificationLite.getError(o));
                 return true;
             }
 
             long r = get();
             if (r != 0L) {
-                actual.onNext(NotificationLite.<T>getValue(o));
+                downstream.onNext(NotificationLite.<T>getValue(o));
                 if (r != Long.MAX_VALUE) {
                     decrementAndGet();
                 }
                 return false;
             }
             cancel();
-            actual.onError(new MissingBackpressureException("Could not deliver value due to lack of requests"));
+            downstream.onError(new MissingBackpressureException("Could not deliver value due to lack of requests"));
             return true;
         }
 
